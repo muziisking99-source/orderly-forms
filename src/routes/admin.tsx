@@ -473,3 +473,45 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+// ------------------- Import configs -------------------
+
+const CUSTOMER_IMPORT_CONFIG: BulkImportConfig = {
+  table: "customers",
+  entityLabel: "customer",
+  dedupeKey: "account_code",
+  dedupeFallbackKey: "name",
+  fields: [
+    { key: "name", label: "Name", required: true, aliases: ["customer name", "customer"] },
+    { key: "account_code", label: "Account code", aliases: ["account", "account no", "account number"] },
+    { key: "delivery_address", label: "Delivery address", aliases: ["address", "ship to"] },
+    { key: "reference", label: "Reference", aliases: ["ref"] },
+    { key: "tax_number", label: "Tax reference", aliases: ["tax number", "tax ref", "vat", "vat number"] },
+    {
+      key: "tax_rate",
+      label: "Tax exempt",
+      aliases: ["tax rate", "vat rate", "tax", "exempt"],
+      transform: (v) => {
+        if (v == null || v === "") return null;
+        const s = String(v).trim().toLowerCase();
+        if (["yes", "true", "y", "exempt", "1"].includes(s)) return 0;
+        if (["no", "false", "n", "0"].includes(s)) return null;
+        const n = Number(String(v).replace("%", ""));
+        return Number.isFinite(n) ? n : null;
+      },
+    },
+    { key: "sales_code", label: "Sales code", aliases: ["sales", "salesperson", "rep"] },
+  ],
+};
+
+const PRODUCT_IMPORT_CONFIG: BulkImportConfig = {
+  table: "products",
+  entityLabel: "product",
+  dedupeKey: "code",
+  fields: [
+    { key: "code", label: "Code", required: true, aliases: ["product code", "sku"] },
+    { key: "description", label: "Description", required: true, aliases: ["name", "product", "product description"] },
+    { key: "unit", label: "Unit", required: true, aliases: ["uom", "unit of measure"] },
+  ],
+};
+
