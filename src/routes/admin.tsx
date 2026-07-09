@@ -103,17 +103,20 @@ function CustomersPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Customers</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing({ id: "", ...EMPTY_CUSTOMER });
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add customer
-        </Button>
+        <div className="flex gap-2">
+          <BulkImportDialog config={CUSTOMER_IMPORT_CONFIG} onImported={() => void load()} />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing({ id: "", ...EMPTY_CUSTOMER });
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add customer
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
