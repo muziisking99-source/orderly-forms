@@ -14,7 +14,173 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          account_code: string | null
+          created_at: string
+          delivery_address: string | null
+          id: string
+          name: string
+          reference: string | null
+          sales_code: string | null
+          tax_number: string | null
+          tax_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_code?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          id?: string
+          name: string
+          reference?: string | null
+          sales_code?: string | null
+          tax_number?: string | null
+          tax_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          account_code?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          id?: string
+          name?: string
+          reference?: string | null
+          sales_code?: string | null
+          tax_number?: string | null
+          tax_rate?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          position: number
+          product_code: string
+          product_description: string
+          product_id: string
+          product_unit: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          position?: number
+          product_code: string
+          product_description: string
+          product_id: string
+          product_unit: string
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          position?: number
+          product_code?: string
+          product_description?: string
+          product_id?: string
+          product_unit?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          account_code: string | null
+          created_at: string
+          customer_id: string
+          customer_name: string
+          delivery_address: string | null
+          delivery_date: string | null
+          document_number: string
+          id: string
+          order_date: string
+          reference: string | null
+          sales_code: string | null
+        }
+        Insert: {
+          account_code?: string | null
+          created_at?: string
+          customer_id: string
+          customer_name: string
+          delivery_address?: string | null
+          delivery_date?: string | null
+          document_number?: string
+          id?: string
+          order_date?: string
+          reference?: string | null
+          sales_code?: string | null
+        }
+        Update: {
+          account_code?: string | null
+          created_at?: string
+          customer_id?: string
+          customer_name?: string
+          delivery_address?: string | null
+          delivery_date?: string | null
+          document_number?: string
+          id?: string
+          order_date?: string
+          reference?: string | null
+          sales_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          id?: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
