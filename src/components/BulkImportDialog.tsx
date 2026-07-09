@@ -92,9 +92,8 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
     setMapping(map);
 
     // Fetch existing rows for dedupe
-    const { data: existing } = await supabase
-      .from(config.table)
-      .select(`id, ${config.dedupeKey}${config.dedupeFallbackKey ? `, ${config.dedupeFallbackKey}` : ""}`);
+    const selectCols = `id, ${config.dedupeKey}${config.dedupeFallbackKey ? `, ${config.dedupeFallbackKey}` : ""}`;
+    const { data: existing } = await (supabase.from(config.table) as any).select(selectCols);
     const existingMap = new Map<string, string>();
     for (const row of (existing ?? []) as Array<Record<string, unknown>>) {
       const k = row[config.dedupeKey];
