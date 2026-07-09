@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BulkImportDialog, type BulkImportConfig } from "@/components/BulkImportDialog";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
