@@ -319,17 +319,20 @@ function ProductsPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Products</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing({ id: "", code: "", description: "", unit: "" });
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add product
-        </Button>
+        <div className="flex gap-2">
+          <BulkImportDialog config={PRODUCT_IMPORT_CONFIG} onImported={() => void load()} />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing({ id: "", code: "", description: "", unit: "" });
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add product
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
