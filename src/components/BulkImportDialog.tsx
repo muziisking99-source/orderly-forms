@@ -168,11 +168,11 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
           skipped++;
           continue;
         }
-        const { error } = await supabase.from(config.table).update(r.data).eq("id", r.duplicateOfId!);
+        const { error } = await (supabase.from(config.table) as any).update(r.data).eq("id", r.duplicateOfId!);
         if (error) errors.push({ row: r.index, reason: error.message });
         else updated++;
       } else {
-        const { error } = await supabase.from(config.table).insert(r.data);
+        const { error } = await (supabase.from(config.table) as any).insert(r.data);
         if (error) errors.push({ row: r.index, reason: error.message });
         else added++;
       }
