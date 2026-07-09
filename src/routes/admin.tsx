@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BulkImportDialog, type BulkImportConfig } from "@/components/BulkImportDialog";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -102,17 +103,20 @@ function CustomersPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Customers</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing({ id: "", ...EMPTY_CUSTOMER });
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add customer
-        </Button>
+        <div className="flex gap-2">
+          <BulkImportDialog config={CUSTOMER_IMPORT_CONFIG} onImported={() => void load()} />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing({ id: "", ...EMPTY_CUSTOMER });
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add customer
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -315,17 +319,20 @@ function ProductsPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Products</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing({ id: "", code: "", description: "", unit: "" });
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add product
-        </Button>
+        <div className="flex gap-2">
+          <BulkImportDialog config={PRODUCT_IMPORT_CONFIG} onImported={() => void load()} />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing({ id: "", code: "", description: "", unit: "" });
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add product
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -466,3 +473,45 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+// ------------------- Import configs -------------------
+
+const CUSTOMER_IMPORT_CONFIG: BulkImportConfig = {
+  table: "customers",
+  entityLabel: "customer",
+  dedupeKey: "account_code",
+  dedupeFallbackKey: "name",
+  fields: [
+    { key: "name", label: "Name", required: true, aliases: ["customer name", "customer"] },
+    { key: "account_code", label: "Account code", aliases: ["account", "account no", "account number"] },
+    { key: "delivery_address", label: "Delivery address", aliases: ["address", "ship to"] },
+    { key: "reference", label: "Reference", aliases: ["ref"] },
+    { key: "tax_number", label: "Tax reference", aliases: ["tax number", "tax ref", "vat", "vat number"] },
+    {
+      key: "tax_rate",
+      label: "Tax exempt",
+      aliases: ["tax rate", "vat rate", "tax", "exempt"],
+      transform: (v) => {
+        if (v == null || v === "") return null;
+        const s = String(v).trim().toLowerCase();
+        if (["yes", "true", "y", "exempt", "1"].includes(s)) return 0;
+        if (["no", "false", "n", "0"].includes(s)) return null;
+        const n = Number(String(v).replace("%", ""));
+        return Number.isFinite(n) ? n : null;
+      },
+    },
+    { key: "sales_code", label: "Sales code", aliases: ["sales", "salesperson", "rep"] },
+  ],
+};
+
+const PRODUCT_IMPORT_CONFIG: BulkImportConfig = {
+  table: "products",
+  entityLabel: "product",
+  dedupeKey: "code",
+  fields: [
+    { key: "code", label: "Code", required: true, aliases: ["product code", "sku"] },
+    { key: "description", label: "Description", required: true, aliases: ["name", "product", "product description"] },
+    { key: "unit", label: "Unit", required: true, aliases: ["uom", "unit of measure"] },
+  ],
+};
+
