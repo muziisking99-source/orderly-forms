@@ -43,9 +43,14 @@ type Product = {
 
 function AdminPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Manage customers and products.</p>
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mb-8">
+        <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace</div>
+        <h1 className="mt-2 font-serif text-5xl leading-none text-foreground">
+          Admin <span className="italic text-primary">panel</span>
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">Manage customers and products, or bulk upload from a spreadsheet.</p>
+      </div>
 
       <Tabs defaultValue="customers" className="mt-6">
         <TabsList>

@@ -131,11 +131,16 @@ function NewOrderPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">New Order</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Choose a customer, add products and quantities, then generate a delivery slip.
-      </p>
+    <main className="mx-auto max-w-4xl px-6 py-12">
+      <div className="mb-8">
+        <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step 01</div>
+        <h1 className="mt-2 font-serif text-5xl leading-none text-foreground">
+          New <span className="italic text-primary">order</span>
+        </h1>
+        <p className="mt-3 max-w-lg text-sm text-muted-foreground">
+          Choose a customer, add products and quantities, then generate a printable delivery slip.
+        </p>
+      </div>
 
       <Card className="mt-6">
         <CardHeader>

@@ -87,6 +87,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -111,22 +117,27 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Nav() {
   return (
-    <header className="border-b border-border bg-card print:hidden">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/" className="text-lg font-semibold tracking-tight text-foreground">
-          Order Slip
+        <Link to="/" className="group flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background transition-transform group-hover:-rotate-6">
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+          </span>
+          <span className="font-serif text-2xl leading-none tracking-tight text-foreground">
+            Order<span className="italic text-primary">Slip</span>
+          </span>
         </Link>
         <nav className="flex items-center gap-1">
           <Link
             to="/"
             activeOptions={{ exact: true }}
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-foreground [&.active]:text-background"
           >
             New Order
           </Link>
           <Link
             to="/admin"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-foreground [&.active]:text-background"
           >
             Admin
           </Link>
@@ -141,7 +152,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="relative min-h-screen bg-background text-foreground">
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 -z-10 opacity-60 print:hidden"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 15% 0%, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 45%), radial-gradient(circle at 85% 10%, color-mix(in oklab, var(--color-accent) 40%, transparent), transparent 50%)",
+          }}
+        />
         <Nav />
         <Outlet />
       </div>
