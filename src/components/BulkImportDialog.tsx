@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -184,6 +184,20 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
     onImported();
   }
 
+  function downloadTemplate() {
+    const headers = config.fields.map((f) => f.label + (f.required ? " *" : ""));
+    const example: Record<string, string> = {};
+    for (const f of config.fields) {
+      const h = f.label + (f.required ? " *" : "");
+      example[h] = exampleValueFor(config.entityLabel, f.key);
+    }
+    const ws = XLSX.utils.json_to_sheet([example], { header: headers });
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(14, h.length + 2) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${config.entityLabel}s`);
+    XLSX.writeFile(wb, `${config.entityLabel}s-template.xlsx`);
+  }
+
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
@@ -203,20 +217,25 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
 
           {!summary && (
             <div className="space-y-4">
-              <div className="rounded border border-dashed border-border p-4">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleFile(f);
-                  }}
-                  className="block text-sm"
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Expected columns: {config.fields.map((f) => f.label + (f.required ? "*" : "")).join(", ")}
-                </p>
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                <div className="flex-1">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleFile(f);
+                    }}
+                    className="block text-sm"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Expected columns: {config.fields.map((f) => f.label + (f.required ? "*" : "")).join(", ")}
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
+                  <Download className="mr-1 h-4 w-4" /> Template
+                </Button>
               </div>
 
               {rows.length > 0 && (
