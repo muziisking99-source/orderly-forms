@@ -45,6 +45,26 @@ function normalizeHeader(h: string): string {
   return h.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function exampleValueFor(entity: string, key: string): string {
+  const isCustomer = entity === "customer";
+  const map: Record<string, string> = isCustomer
+    ? {
+        name: "Acme Trading Co.",
+        account_code: "ACM001",
+        delivery_address: "12 Warehouse Rd\nSpringfield, 2000",
+        reference: "PO-2025-001",
+        tax_number: "VAT123456789",
+        tax_rate: "15",
+        sales_code: "REP-04",
+      }
+    : {
+        code: "SKU-001",
+        description: "Example product",
+        unit: "ea",
+      };
+  return map[key] ?? "";
+}
+
 function matchField(header: string, fields: ImportFieldSpec[]): ImportFieldSpec | null {
   const norm = normalizeHeader(header);
   for (const f of fields) {
