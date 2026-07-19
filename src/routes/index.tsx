@@ -1,15 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Check, ChevronsUpDown, Eraser, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { groupProductsByRange } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -35,16 +43,6 @@ type Product = {
   unit: string;
 };
 
-type LineItem = {
-  key: string;
-  product_id: string | null;
-  quantity: string;
-};
-
-function newLine(): LineItem {
-  return { key: crypto.randomUUID(), product_id: null, quantity: "1" };
-}
-
 function NewOrderPage() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -52,7 +50,10 @@ function NewOrderPage() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState<string>("");
-  const [items, setItems] = useState<LineItem[]>([newLine()]);
+  const [orderedBy, setOrderedBy] = useState("");
+  /** productId -> quantity string (blank = 0) */
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [productFilter, setProductFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -71,8 +72,36 @@ function NewOrderPage() {
     [customers, customerId],
   );
 
-  function updateItem(key: string, patch: Partial<LineItem>) {
-    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+  const filteredProducts = useMemo(() => {
+    const q = productFilter.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.code.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
+    );
+  }, [products, productFilter]);
+
+  const grouped = useMemo(() => groupProductsByRange(filteredProducts), [filteredProducts]);
+
+  const summary = useMemo(() => {
+    let itemCount = 0;
+    let unitTotal = 0;
+    for (const p of products) {
+      const qty = Number(quantities[p.id]);
+      if (Number.isFinite(qty) && qty > 0) {
+        itemCount += 1;
+        unitTotal += qty;
+      }
+    }
+    return { itemCount, unitTotal };
+  }, [products, quantities]);
+
+  function setQty(productId: string, value: string) {
+    setQuantities((prev) => ({ ...prev, [productId]: value }));
+  }
+
+  function clearAllQuantities() {
+    setQuantities({});
   }
 
   async function handleSubmit() {
@@ -80,11 +109,13 @@ function NewOrderPage() {
       toast.error("Please select a customer");
       return;
     }
-    const clean = items
-      .map((it) => ({ ...it, qty: Number(it.quantity) }))
-      .filter((it) => it.product_id && it.qty > 0);
+
+    const clean = products
+      .map((p) => ({ product: p, qty: Number(quantities[p.id]) }))
+      .filter((it) => Number.isFinite(it.qty) && it.qty > 0);
+
     if (clean.length === 0) {
-      toast.error("Add at least one line item");
+      toast.error("Enter a quantity for at least one product");
       return;
     }
 
@@ -99,31 +130,28 @@ function NewOrderPage() {
           account_code: selectedCustomer.account_code,
           delivery_address: selectedCustomer.delivery_address,
           reference: selectedCustomer.reference,
-          sales_code: selectedCustomer.sales_code,
+          sales_code: orderedBy.trim() || null,
         })
         .select()
         .single();
-      if (orderErr || !order) throw orderErr ?? new Error("Failed to create order");
+      if (orderErr || !order) throw orderErr ?? new Error("Failed to create sales requisition");
 
-      const rows = clean.map((it, idx) => {
-        const p = products.find((pp) => pp.id === it.product_id)!;
-        return {
-          order_id: order.id,
-          product_id: p.id,
-          product_code: p.code,
-          product_description: p.description,
-          product_unit: p.unit,
-          quantity: it.qty,
-          position: idx,
-        };
-      });
+      const rows = clean.map((it, idx) => ({
+        order_id: order.id,
+        product_id: it.product.id,
+        product_code: it.product.code,
+        product_description: it.product.description,
+        product_unit: it.product.unit,
+        quantity: it.qty,
+        position: idx,
+      }));
       const { error: itemsErr } = await supabase.from("order_items").insert(rows);
       if (itemsErr) throw itemsErr;
 
-      toast.success(`Order ${order.document_number} created`);
+      toast.success(`Sales Requisition ${order.document_number} created`);
       navigate({ to: "/orders/$id", params: { id: order.id } });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to save order";
+      const msg = e instanceof Error ? e.message : "Failed to save sales requisition";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -131,14 +159,17 @@ function NewOrderPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 py-10 pb-28">
       <div className="mb-8">
-        <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step 01</div>
-        <h1 className="mt-2 font-serif text-5xl leading-none text-foreground">
-          New <span className="italic text-primary">order</span>
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          New document
+        </div>
+        <h1 className="mt-2 font-display text-4xl leading-none text-foreground md:text-5xl">
+          Sales Requisition
         </h1>
-        <p className="mt-3 max-w-lg text-sm text-muted-foreground">
-          Choose a customer, add products and quantities, then generate a printable delivery slip.
+        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+          Select a customer, enter quantities against the product catalogue, then create the Sales
+          Requisition.
         </p>
       </div>
 
@@ -173,9 +204,15 @@ function NewOrderPage() {
                           onSelect={() => {
                             setCustomerId(c.id);
                             setCustomerOpen(false);
+                            setOrderedBy((prev) => prev || c.sales_code || "");
                           }}
                         >
-                          <Check className={cn("mr-2 h-4 w-4", customerId === c.id ? "opacity-100" : "opacity-0")} />
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              customerId === c.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
                           <div className="flex flex-col">
                             <span>{c.name}</span>
                             {c.account_code && (
@@ -199,95 +236,169 @@ function NewOrderPage() {
               <ReadField label="Tax number" value={selectedCustomer.tax_number} />
               <ReadField
                 label="Tax rate"
-                value={selectedCustomer.tax_rate != null ? `${selectedCustomer.tax_rate}%` : null}
+                value={
+                  selectedCustomer.tax_rate != null
+                    ? selectedCustomer.tax_rate === 0
+                      ? "Exempt"
+                      : `${selectedCustomer.tax_rate}%`
+                    : null
+                }
               />
               <div className="sm:col-span-2">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   Delivery address
                 </Label>
-                <Textarea readOnly value={selectedCustomer.delivery_address ?? ""} className="mt-1 bg-background" />
+                <Textarea
+                  readOnly
+                  value={selectedCustomer.delivery_address ?? ""}
+                  className="mt-1 bg-background"
+                />
               </div>
             </div>
           )}
 
-          <div className="max-w-xs">
-            <Label htmlFor="delivery-date">Delivery date</Label>
-            <Input
-              id="delivery-date"
-              type="date"
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              className="mt-1"
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="max-w-xs">
+              <Label htmlFor="delivery-date">Delivery date</Label>
+              <Input
+                id="delivery-date"
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="max-w-xs">
+              <Label htmlFor="ordered-by">Order by</Label>
+              <Input
+                id="ordered-by"
+                value={orderedBy}
+                onChange={(e) => setOrderedBy(e.target.value)}
+                placeholder="Name of person ordering…"
+                className="mt-1"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card className="mt-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Line items</CardTitle>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setItems((p) => [...p, newLine()])}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add line
-          </Button>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Products</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Enter quantities for the lines you need. Empty rows are ignored.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[14rem] flex-1 sm:flex-none">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                placeholder="Filter by code or description…"
+                className="pl-8"
+                aria-label="Filter products"
+              />
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={clearAllQuantities}>
+              <Eraser className="mr-1.5 h-4 w-4" />
+              Clear all quantities
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {items.map((it, idx) => {
-            const product = products.find((p) => p.id === it.product_id) ?? null;
-            return (
-              <div
-                key={it.key}
-                className="grid grid-cols-12 items-end gap-2 rounded-md border border-border p-3"
-              >
-                <div className="col-span-12 sm:col-span-7">
-                  <Label className="text-xs">Product #{idx + 1}</Label>
-                  <ProductPicker
-                    products={products}
-                    value={product}
-                    onChange={(p) => updateItem(it.key, { product_id: p?.id ?? null })}
-                  />
-                </div>
-                <div className="col-span-8 sm:col-span-3">
-                  <Label className="text-xs">Quantity</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={it.quantity}
-                    onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div className="col-span-4 sm:col-span-2 flex items-end justify-end sm:justify-start">
-                  <div className="flex-1 text-sm text-muted-foreground">
-                    {product?.unit ?? "—"}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      setItems((p) => (p.length === 1 ? [newLine()] : p.filter((x) => x.key !== it.key)))
-                    }
-                    aria-label="Remove line"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+        <CardContent className="p-0">
+          {products.length === 0 ? (
+            <div className="px-6 py-10 text-sm text-muted-foreground">
+              No products yet. Add them in Admin.
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="px-6 py-10 text-sm text-muted-foreground">
+              No products match “{productFilter}”.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[36rem] border-collapse text-sm">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border text-left">
+                    <th className="px-4 py-3 font-semibold">Code</th>
+                    <th className="px-4 py-3 font-semibold">Description</th>
+                    <th className="px-4 py-3 font-semibold">Unit</th>
+                    <th className="w-36 px-4 py-3 text-right font-semibold">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grouped.map((group) => (
+                    <Fragment key={group.label}>
+                      <tr className="bg-muted/50">
+                        <td
+                          colSpan={4}
+                          className="px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                        >
+                          {group.label}
+                        </td>
+                      </tr>
+                      {group.products.map((p) => {
+                        const hasQty =
+                          Number(quantities[p.id]) > 0 && Number.isFinite(Number(quantities[p.id]));
+                        return (
+                          <tr
+                            key={p.id}
+                            className={cn(
+                              "border-b border-border/70 transition-colors",
+                              hasQty ? "bg-primary/5" : "hover:bg-muted/30",
+                            )}
+                          >
+                            <td className="px-4 py-2 font-medium tabular-nums text-foreground">
+                              {p.code}
+                            </td>
+                            <td className="px-4 py-2 text-foreground/90">{p.description}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{p.unit}</td>
+                            <td className="px-4 py-2 text-right">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="any"
+                                inputMode="decimal"
+                                placeholder="0"
+                                value={quantities[p.id] ?? ""}
+                                onChange={(e) => setQty(p.id, e.target.value)}
+                                className="ml-auto h-9 w-28 text-right tabular-nums"
+                                aria-label={`Quantity for ${p.code}`}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="mt-6 flex justify-end">
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Creating…" : "Create delivery slip"}
-        </Button>
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur-md print:hidden"
+        style={{ "--tw-shadow": "0 -8px 24px rgba(11,31,58,0.06)" } as CSSProperties}
+      >
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-3.5">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{summary.itemCount}</span>{" "}
+            {summary.itemCount === 1 ? "item" : "items"}
+            <span className="mx-2 text-border">·</span>
+            <span className="font-semibold tabular-nums text-foreground">
+              {Number.isInteger(summary.unitTotal)
+                ? summary.unitTotal
+                : summary.unitTotal.toFixed(2)}
+            </span>{" "}
+            units total
+          </div>
+          <Button onClick={handleSubmit} disabled={submitting} size="lg">
+            {submitting ? "Creating…" : "Create Sales Requisition"}
+          </Button>
+        </div>
       </div>
     </main>
   );
@@ -301,55 +412,5 @@ function ReadField({ label, value }: { label: string; value: string | null | und
         {value || <span className="text-muted-foreground">—</span>}
       </div>
     </div>
-  );
-}
-
-function ProductPicker({
-  products,
-  value,
-  onChange,
-}: {
-  products: Product[];
-  value: Product | null;
-  onChange: (p: Product | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" className="mt-1 w-full justify-between font-normal">
-          {value ? `${value.code} — ${value.description}` : "Select product…"}
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search products…" />
-          <CommandList>
-            <CommandEmpty>No product found.</CommandEmpty>
-            <CommandGroup>
-              {products.map((p) => (
-                <CommandItem
-                  key={p.id}
-                  value={`${p.code} ${p.description}`}
-                  onSelect={() => {
-                    onChange(p);
-                    setOpen(false);
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value?.id === p.id ? "opacity-100" : "opacity-0")} />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{p.code}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {p.description} · {p.unit}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { toast } from "sonner";
 import { Download, Upload } from "lucide-react";
 
@@ -14,6 +14,125 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+
+function cellToString(value: ExcelJS.CellValue): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "object") {
+    if ("text" in value && value.text != null) return String(value.text);
+    if ("result" in value) return cellToString(value.result as ExcelJS.CellValue);
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText.map((t) => t.text).join("");
+    }
+    if ("hyperlink" in value && "text" in value) return String((value as { text: string }).text);
+  }
+  return String(value);
+}
+
+function parseCsv(text: string): Record<string, unknown>[] {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (lines.length === 0) return [];
+
+  const parseLine = (line: string): string[] => {
+    const cells: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          cur += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        cells.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur);
+    return cells;
+  };
+
+  const headers = parseLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const values = parseLine(line);
+    const row: Record<string, unknown> = {};
+    headers.forEach((h, i) => {
+      row[h] = values[i] ?? "";
+    });
+    return row;
+  });
+}
+
+async function sheetToJson(file: File): Promise<Record<string, unknown>[]> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".csv")) {
+    return parseCsv(await file.text());
+  }
+  if (name.endsWith(".xls") && !name.endsWith(".xlsx")) {
+    throw new Error("Legacy .xls files are not supported. Please save as .xlsx or .csv.");
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+  const sheet = workbook.worksheets[0];
+  if (!sheet || sheet.rowCount === 0) return [];
+
+  const headerRow = sheet.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    headers[colNumber - 1] = cellToString(cell.value);
+  });
+  if (headers.length === 0 || headers.every((h) => !h)) return [];
+
+  const rows: Record<string, unknown>[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, unknown> = {};
+    let hasValue = false;
+    headers.forEach((h, i) => {
+      if (!h) return;
+      const val = cellToString(row.getCell(i + 1).value);
+      obj[h] = val;
+      if (val !== "") hasValue = true;
+    });
+    if (hasValue) rows.push(obj);
+  });
+  return rows;
+}
+
+async function downloadXlsx(filename: string, sheetName: string, headers: string[], example: Record<string, string>) {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sheetName);
+  sheet.columns = headers.map((h) => ({
+    header: h,
+    key: h,
+    width: Math.max(14, h.length + 2),
+  }));
+  sheet.addRow(example);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export type ImportFieldSpec = {
   key: string;
@@ -94,10 +213,13 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
 
   async function handleFile(file: File) {
     reset();
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
+    let json: Record<string, unknown>[];
+    try {
+      json = await sheetToJson(file);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to read file");
+      return;
+    }
     if (json.length === 0) {
       toast.error("File is empty");
       return;
@@ -211,11 +333,12 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
       const h = f.label + (f.required ? " *" : "");
       example[h] = exampleValueFor(config.entityLabel, f.key);
     }
-    const ws = XLSX.utils.json_to_sheet([example], { header: headers });
-    ws["!cols"] = headers.map((h) => ({ wch: Math.max(14, h.length + 2) }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `${config.entityLabel}s`);
-    XLSX.writeFile(wb, `${config.entityLabel}s-template.xlsx`);
+    void downloadXlsx(
+      `${config.entityLabel}s-template.xlsx`,
+      `${config.entityLabel}s`,
+      headers,
+      example,
+    );
   }
 
   return (
@@ -242,7 +365,7 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
                   <input
                     ref={fileRef}
                     type="file"
-                    accept=".xlsx,.xls,.csv"
+                    accept=".xlsx,.csv"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) void handleFile(f);

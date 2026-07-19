@@ -76,11 +76,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Order Slip — Delivery & Picking Sheets" },
-      { name: "description", content: "Create customer orders and generate printable delivery/picking slips." },
-      { name: "author", content: "Order Slip" },
-      { property: "og:title", content: "Order Slip" },
-      { property: "og:description", content: "Create customer orders and generate printable delivery/picking slips." },
+      { title: "Sales Requisition — Golden Fresh Biscuits" },
+      {
+        name: "description",
+        content: "Create customer Sales Requisitions and download branded PDF documents.",
+      },
+      { name: "author", content: "Golden Fresh Biscuits" },
+      { property: "og:title", content: "Sales Requisition" },
+      {
+        property: "og:description",
+        content: "Create customer Sales Requisitions and download branded PDF documents.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -91,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -117,27 +123,29 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Nav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md print:hidden">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/" className="group flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background transition-transform group-hover:-rotate-6">
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
-          </span>
-          <span className="font-serif text-2xl leading-none tracking-tight text-foreground">
-            Order<span className="italic text-primary">Slip</span>
+        <Link to="/" className="group flex items-center gap-2.5">
+          <img
+            src="/golden-fresh-logo.png"
+            alt="Golden Fresh"
+            className="h-9 w-auto object-contain"
+          />
+          <span className="font-display text-2xl leading-none tracking-tight text-[var(--brand-navy)]">
+            Sales Requisition
           </span>
         </Link>
         <nav className="flex items-center gap-1">
           <Link
             to="/"
             activeOptions={{ exact: true }}
-            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-foreground [&.active]:text-background"
+            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-[var(--brand-navy)] [&.active]:text-white"
           >
-            New Order
+            New Sales Requisition
           </Link>
           <Link
             to="/admin"
-            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-foreground [&.active]:text-background"
+            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-[var(--brand-navy)] [&.active]:text-white"
           >
             Admin
           </Link>
@@ -158,7 +166,7 @@ function RootComponent() {
           className="pointer-events-none fixed inset-0 -z-10 opacity-60 print:hidden"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 15% 0%, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 45%), radial-gradient(circle at 85% 10%, color-mix(in oklab, var(--color-accent) 40%, transparent), transparent 50%)",
+              "radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--brand-gold) 22%, transparent), transparent 42%), radial-gradient(circle at 88% 8%, color-mix(in oklab, var(--brand-navy) 10%, transparent), transparent 48%)",
           }}
         />
         <Nav />
