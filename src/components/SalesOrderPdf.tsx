@@ -45,8 +45,7 @@ export type SalesOrderPdfData = {
   items: {
     code: string;
     description: string;
-    quantity: number | string;
-    unit: string;
+    quantity: string;
   }[];
   logoSrc?: string;
 };
@@ -71,63 +70,28 @@ const s = StyleSheet.create({
     color: INK,
     backgroundColor: PAPER,
   },
-
-  /* ── Header band ── */
   headerBand: {
     backgroundColor: NAVY,
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingTop: 24,
+    paddingBottom: 20,
     paddingHorizontal: 36,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  brandBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    paddingRight: 16,
+    alignItems: "flex-start",
   },
   logo: {
-    width: 78,
-    height: 56,
-    marginRight: 12,
+    width: 88,
+    height: 64,
+    marginBottom: 10,
   },
-  brandText: {
-    flex: 1,
+  letterheadLine: {
+    fontSize: 8.5,
+    color: "#E8ECF2",
+    lineHeight: 1.5,
   },
-  brand: {
-    fontFamily: "AbrilFatface",
-    fontSize: 15,
+  letterheadEmail: {
+    fontSize: 8.5,
     color: "#FFFFFF",
-    letterSpacing: 0.5,
-  },
-  legal: {
-    marginTop: 3,
-    fontSize: 8,
     fontWeight: 700,
-    color: GOLD,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  contactBlock: {
-    width: 190,
-    alignItems: "flex-end",
-  },
-  contactLine: {
-    fontSize: 7.5,
-    color: "#D0D7E4",
-    lineHeight: 1.45,
-    textAlign: "right",
-  },
-  contactEmph: {
-    fontSize: 7.5,
-    color: "#FFFFFF",
-    fontWeight: 600,
-    textAlign: "right",
-    marginBottom: 2,
+    marginTop: 4,
   },
   goldStripe: {
     height: 3,
@@ -137,14 +101,10 @@ const s = StyleSheet.create({
     height: 1.5,
     backgroundColor: RED,
   },
-
-  /* ── Body ── */
   body: {
     paddingHorizontal: 36,
     paddingTop: 18,
   },
-
-  /* Document title + meta */
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -203,8 +163,6 @@ const s = StyleSheet.create({
     color: NAVY,
     textAlign: "right",
   },
-
-  /* Deliver-to + codes */
   infoRow: {
     flexDirection: "row",
     marginBottom: 16,
@@ -267,8 +225,6 @@ const s = StyleSheet.create({
     fontWeight: 700,
     color: NAVY,
   },
-
-  /* Table */
   table: {
     borderWidth: 1,
     borderColor: NAVY,
@@ -306,16 +262,12 @@ const s = StyleSheet.create({
   },
   cellPadL: { paddingLeft: 8 },
   cellPadR: { paddingRight: 8 },
-  colCode: { width: "15%" },
-  colDesc: { width: "53%" },
-  colQty: { width: "16%", textAlign: "right" },
-  colUnit: { width: "16%" },
-  thCode: { width: "15%", paddingLeft: 8 },
-  thDesc: { width: "53%", paddingLeft: 8 },
-  thQty: { width: "16%", textAlign: "right", paddingRight: 8 },
-  thUnit: { width: "16%", paddingLeft: 8 },
-
-  /* Signature */
+  colCode: { width: "18%" },
+  colDesc: { width: "58%" },
+  colQty: { width: "24%", textAlign: "right" },
+  thCode: { width: "18%", paddingLeft: 8 },
+  thDesc: { width: "58%", paddingLeft: 8 },
+  thQty: { width: "24%", textAlign: "right", paddingRight: 8 },
   footer: {
     marginTop: 28,
     borderTopWidth: 1.5,
@@ -348,8 +300,6 @@ const s = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.9,
   },
-
-  /* Page footer */
   pageFooter: {
     position: "absolute",
     bottom: 18,
@@ -376,7 +326,7 @@ const s = StyleSheet.create({
 function padItems(items: SalesOrderPdfData["items"], min = 6) {
   const rows = [...items];
   while (rows.length < min) {
-    rows.push({ code: "", description: "", quantity: "", unit: "" });
+    rows.push({ code: "", description: "", quantity: "" });
   }
   return rows;
 }
@@ -386,25 +336,13 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
   const filledCount = data.items.length;
 
   return (
-    <Document title={`Sales Requisition ${data.documentNumber}`} author={COMPANY.brandName}>
+    <Document title={`Order Requisition ${data.documentNumber}`} author={COMPANY.brandName}>
       <Page size="A4" style={s.page}>
         <View style={s.headerBand}>
-          <View style={s.headerTop}>
-            <View style={s.brandBlock}>
-              <Image src={data.logoSrc ?? GOLDEN_FRESH_LOGO_DATA_URL} style={s.logo} />
-              <View style={s.brandText}>
-                <Text style={s.brand}>{COMPANY.brandName}</Text>
-                <Text style={s.legal}>{COMPANY.legalName}</Text>
-              </View>
-            </View>
-            <View style={s.contactBlock}>
-              <Text style={s.contactEmph}>{COMPANY.email}</Text>
-              <Text style={s.contactLine}>{COMPANY.address}</Text>
-              <Text style={s.contactLine}>
-                Tel {COMPANY.tel}  ·  Fax {COMPANY.fax}
-              </Text>
-            </View>
-          </View>
+          <Image src={data.logoSrc ?? GOLDEN_FRESH_LOGO_DATA_URL} style={s.logo} />
+          <Text style={s.letterheadLine}>{COMPANY.address}</Text>
+          <Text style={s.letterheadLine}>Tel: {COMPANY.tel}</Text>
+          <Text style={s.letterheadEmail}>{COMPANY.salesEmail}</Text>
         </View>
         <View style={s.goldStripe} />
         <View style={s.redAccent} />
@@ -413,7 +351,7 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
           <View style={s.titleRow}>
             <View style={s.titleLeft}>
               <Text style={s.docEyebrow}>Official document</Text>
-              <Text style={s.docTitle}>Sales Requisition</Text>
+              <Text style={s.docTitle}>Order Requisition</Text>
             </View>
             <View style={s.metaBox}>
               <View style={s.metaBoxRow}>
@@ -458,7 +396,6 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
               <Text style={[s.th, s.thCode]}>Code</Text>
               <Text style={[s.th, s.thDesc]}>Description</Text>
               <Text style={[s.th, s.thQty]}>Quantity</Text>
-              <Text style={[s.th, s.thUnit]}>Unit</Text>
             </View>
             {rows.map((it, i) => {
               const isBlank = i >= filledCount;
@@ -468,10 +405,7 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
                 <View key={i} style={rowStyle} wrap={false}>
                   <Text style={[s.cell, s.colCode, s.cellPadL]}>{it.code}</Text>
                   <Text style={[s.cell, s.colDesc, s.cellPadL]}>{it.description}</Text>
-                  <Text style={[s.cell, s.colQty, s.cellPadR]}>
-                    {it.quantity === "" ? "" : String(it.quantity)}
-                  </Text>
-                  <Text style={[s.cell, s.colUnit, s.cellPadL]}>{it.unit}</Text>
+                  <Text style={[s.cell, s.colQty, s.cellPadR]}>{it.quantity}</Text>
                 </View>
               );
             })}
@@ -514,7 +448,7 @@ export async function downloadSalesOrderPdf(data: SalesOrderPdfData) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `SalesRequisition-${data.documentNumber}.pdf`;
+  a.download = `OrderRequisition-${data.documentNumber}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -530,7 +464,7 @@ export function buildPdfData(input: {
   items: {
     product_code: string;
     product_description: string;
-    quantity: number;
+    quantity: string;
     product_unit: string;
   }[];
 }): SalesOrderPdfData {
@@ -546,7 +480,6 @@ export function buildPdfData(input: {
       code: it.product_code,
       description: it.product_description,
       quantity: it.quantity,
-      unit: it.product_unit,
     })),
   };
 }

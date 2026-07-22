@@ -63,7 +63,7 @@ export type Database = {
           product_description: string
           product_id: string
           product_unit: string
-          quantity: number
+          quantity: string
         }
         Insert: {
           created_at?: string
@@ -74,7 +74,7 @@ export type Database = {
           product_description: string
           product_id: string
           product_unit: string
-          quantity: number
+          quantity: string
         }
         Update: {
           created_at?: string
@@ -85,7 +85,7 @@ export type Database = {
           product_description?: string
           product_id?: string
           product_unit?: string
-          quantity?: number
+          quantity?: string
         }
         Relationships: [
           {

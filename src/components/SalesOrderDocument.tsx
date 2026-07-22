@@ -13,20 +13,19 @@ export type SalesOrderViewModel = {
     id?: string;
     code: string;
     description: string;
-    quantity: number | string;
-    unit: string;
+    quantity: string;
   }[];
 };
 
 function padItems(items: SalesOrderViewModel["items"], min = 6) {
   const rows = [...items];
   while (rows.length < min) {
-    rows.push({ id: `blank-${rows.length}`, code: "", description: "", quantity: "", unit: "" });
+    rows.push({ id: `blank-${rows.length}`, code: "", description: "", quantity: "" });
   }
   return rows;
 }
 
-/** On-screen / print layout for a Sales Requisition document. */
+/** On-screen / print layout for an Order Requisition document. */
 export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
   const rows = padItems(order.items);
 
@@ -45,30 +44,16 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
         } as CSSProperties
       }
     >
-      <header className="bg-[var(--so-navy)] px-8 py-5 text-white print:px-6">
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <img
-              src="/golden-fresh-logo.png"
-              alt="Golden Fresh"
-              className="h-16 w-auto shrink-0 object-contain sm:h-[4.5rem]"
-            />
-            <div className="pt-1">
-              <div className="font-display text-lg leading-none tracking-wide text-white sm:text-xl">
-                {COMPANY.brandName}
-              </div>
-              <div className="mt-1.5 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[var(--so-gold)]">
-                {COMPANY.legalName}
-              </div>
-            </div>
-          </div>
-          <div className="hidden text-right text-[0.7rem] leading-relaxed text-white/75 sm:block">
-            <div className="font-semibold text-white">{COMPANY.email}</div>
-            <div className="mt-1">{COMPANY.address}</div>
-            <div>
-              Tel {COMPANY.tel} · Fax {COMPANY.fax}
-            </div>
-          </div>
+      <header className="bg-[var(--so-navy)] px-8 py-6 text-white print:px-6">
+        <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+          <img
+            src="/golden-fresh-logo.png"
+            alt="Golden Fresh"
+            className="mb-4 h-16 w-auto object-contain sm:h-[4.5rem]"
+          />
+          <p className="text-[0.8rem] leading-relaxed text-white/90">{COMPANY.address}</p>
+          <p className="mt-1 text-[0.8rem] text-white/90">Tel: {COMPANY.tel}</p>
+          <p className="mt-1 text-[0.8rem] font-semibold text-white">{COMPANY.salesEmail}</p>
         </div>
       </header>
       <div className="h-[3px] bg-[var(--so-gold)]" />
@@ -81,7 +66,7 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
               Official document
             </div>
             <h2 className="font-display text-2xl text-[var(--so-navy)] sm:text-[1.85rem]">
-              Sales Requisition
+              Order Requisition
             </h2>
           </div>
           <dl className="min-w-[10.5rem] border border-[var(--so-navy)] bg-[#F7F5F0] text-sm font-body">
@@ -131,14 +116,15 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
         <table className="w-full border-collapse border border-[var(--so-navy)] font-body text-sm">
           <thead>
             <tr className="bg-[var(--so-navy)] text-left text-white">
-              <th className="px-2 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em]">Code</th>
+              <th className="w-[18%] px-2 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em]">
+                Code
+              </th>
               <th className="px-2 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em]">
                 Description
               </th>
-              <th className="px-2 py-2.5 text-right text-[0.7rem] font-bold uppercase tracking-[0.08em]">
+              <th className="w-[22%] px-2 py-2.5 text-right text-[0.7rem] font-bold uppercase tracking-[0.08em]">
                 Quantity
               </th>
-              <th className="px-2 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em]">Unit</th>
             </tr>
           </thead>
           <tbody>
@@ -151,10 +137,7 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
                   {it.code || <span className="opacity-0">—</span>}
                 </td>
                 <td className="px-2 py-2.5 align-top">{it.description}</td>
-                <td className="px-2 py-2.5 text-right align-top tabular-nums">
-                  {it.quantity === "" ? "" : String(it.quantity)}
-                </td>
-                <td className="px-2 py-2.5 align-top">{it.unit}</td>
+                <td className="px-2 py-2.5 text-right align-top">{it.quantity}</td>
               </tr>
             ))}
           </tbody>

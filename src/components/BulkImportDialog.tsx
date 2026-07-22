@@ -146,6 +146,8 @@ export type BulkImportConfig = {
   table: "customers" | "products";
   entityLabel: string; // "customer" | "product"
   fields: ImportFieldSpec[];
+  /** Applied on insert when a column is omitted from the import file */
+  insertDefaults?: Record<string, unknown>;
   /** Column used to detect duplicates (e.g. "code" or "account_code"|"name") */
   dedupeKey: string;
   /** Optional: allow duplicate detection to fall back to another field */
@@ -179,7 +181,6 @@ function exampleValueFor(entity: string, key: string): string {
     : {
         code: "SKU-001",
         description: "Example product",
-        unit: "ea",
       };
   return map[key] ?? "";
 }
@@ -314,7 +315,8 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
         if (error) errors.push({ row: r.index, reason: error.message });
         else updated++;
       } else {
-        const { error } = await (supabase.from(config.table) as any).insert(r.data);
+        const payload = { ...config.insertDefaults, ...r.data };
+        const { error } = await (supabase.from(config.table) as any).insert(payload);
         if (error) errors.push({ row: r.index, reason: error.message });
         else added++;
       }

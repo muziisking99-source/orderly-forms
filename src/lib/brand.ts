@@ -7,6 +7,7 @@ export const COMPANY = {
   tel: "(011) 857-1455",
   fax: "(011) 857-1458",
   email: "accounts@goldenfresh.co.za",
+  salesEmail: "sales@goldenfresh.co.za",
   ckNo: "1998/60253/23",
   vatNo: "4280177702",
 } as const;

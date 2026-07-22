@@ -136,7 +136,7 @@ function CustomersPanel() {
                   <th className="py-2 pr-4">Name</th>
                   <th className="py-2 pr-4">Account</th>
                   <th className="py-2 pr-4">Reference</th>
-                  <th className="py-2 pr-4">Sales</th>
+                  <th className="py-2 pr-4">Order by</th>
                   <th className="py-2 w-24"></th>
                 </tr>
               </thead>
@@ -249,7 +249,7 @@ function CustomerDialog({
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
             />
           </Field>
-          <Field label="Sales code">
+          <Field label="Order by">
             <Input
               value={form.sales_code ?? ""}
               onChange={(e) => setForm({ ...form, sales_code: e.target.value })}
@@ -505,7 +505,7 @@ const CUSTOMER_IMPORT_CONFIG: BulkImportConfig = {
         return Number.isFinite(n) ? n : null;
       },
     },
-    { key: "sales_code", label: "Sales code", aliases: ["sales", "salesperson", "rep"] },
+    { key: "sales_code", label: "Order by", aliases: ["sales", "salesperson", "rep", "order by"] },
   ],
 };
 
@@ -513,10 +513,10 @@ const PRODUCT_IMPORT_CONFIG: BulkImportConfig = {
   table: "products",
   entityLabel: "product",
   dedupeKey: "code",
+  insertDefaults: { unit: "" },
   fields: [
     { key: "code", label: "Code", required: true, aliases: ["product code", "sku"] },
     { key: "description", label: "Description", required: true, aliases: ["name", "product", "product description"] },
-    { key: "unit", label: "Unit", required: true, aliases: ["uom", "unit of measure"] },
   ],
 };
 

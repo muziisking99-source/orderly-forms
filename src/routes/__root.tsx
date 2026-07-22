@@ -76,16 +76,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sales Requisition — Golden Fresh Biscuits" },
+      { title: "Order Requisition — Golden Fresh Biscuits" },
       {
         name: "description",
-        content: "Create customer Sales Requisitions and download branded PDF documents.",
+        content: "Create customer Order Requisitions and download branded PDF documents.",
       },
       { name: "author", content: "Golden Fresh Biscuits" },
-      { property: "og:title", content: "Sales Requisition" },
+      { property: "og:title", content: "Order Requisition" },
       {
         property: "og:description",
-        content: "Create customer Sales Requisitions and download branded PDF documents.",
+        content: "Create customer Order Requisitions and download branded PDF documents.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -132,7 +132,7 @@ function Nav() {
             className="h-9 w-auto object-contain"
           />
           <span className="font-display text-2xl leading-none tracking-tight text-[var(--brand-navy)]">
-            Sales Requisition
+            Order Requisition
           </span>
         </Link>
         <nav className="flex items-center gap-1">
@@ -141,7 +141,7 @@ function Nav() {
             activeOptions={{ exact: true }}
             className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-[var(--brand-navy)] [&.active]:text-white"
           >
-            New Sales Requisition
+            New Order Requisition
           </Link>
           <Link
             to="/admin"

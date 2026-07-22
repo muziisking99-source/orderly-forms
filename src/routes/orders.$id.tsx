@@ -15,7 +15,6 @@ type Order = {
   id: string;
   document_number: string;
   order_date: string;
-  delivery_date: string | null;
   customer_name: string;
   account_code: string | null;
   delivery_address: string | null;
@@ -27,8 +26,7 @@ type Item = {
   id: string;
   product_code: string;
   product_description: string;
-  product_unit: string;
-  quantity: number;
+  quantity: string;
   position: number;
 };
 
@@ -67,7 +65,6 @@ function SalesOrderPage() {
         code: it.product_code,
         description: it.product_description,
         quantity: it.quantity,
-        unit: it.product_unit,
       })),
     };
   }, [order, items]);
@@ -85,7 +82,12 @@ function SalesOrderPage() {
         account_code: order.account_code,
         reference: order.reference,
         order_by: order.sales_code,
-        items,
+        items: items.map((it) => ({
+          product_code: it.product_code,
+          product_description: it.product_description,
+          quantity: it.quantity,
+          product_unit: "",
+        })),
       });
       await downloadSalesOrderPdf(data);
     } catch (e: unknown) {
@@ -102,9 +104,9 @@ function SalesOrderPage() {
   if (!order || !viewModel) {
     return (
       <div className="p-10">
-        <p className="text-sm text-muted-foreground">Sales Requisition not found.</p>
+        <p className="text-sm text-muted-foreground">Order Requisition not found.</p>
         <Link to="/" className="mt-4 inline-block text-sm underline">
-          Back to new Sales Requisition
+          Back to new Order Requisition
         </Link>
       </div>
     );
@@ -118,7 +120,7 @@ function SalesOrderPage() {
             to="/"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> New Sales Requisition
+            <ArrowLeft className="h-4 w-4" /> New Order Requisition
           </Link>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => window.print()}>

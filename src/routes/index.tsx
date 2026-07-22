@@ -49,9 +49,7 @@ function NewOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState<string>("");
-  const [orderedBy, setOrderedBy] = useState("");
-  /** productId -> quantity string (blank = 0) */
+  /** productId -> quantity string (blank = omitted) */
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [productFilter, setProductFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -83,17 +81,12 @@ function NewOrderPage() {
 
   const grouped = useMemo(() => groupProductsByRange(filteredProducts), [filteredProducts]);
 
-  const summary = useMemo(() => {
-    let itemCount = 0;
-    let unitTotal = 0;
+  const itemCount = useMemo(() => {
+    let count = 0;
     for (const p of products) {
-      const qty = Number(quantities[p.id]);
-      if (Number.isFinite(qty) && qty > 0) {
-        itemCount += 1;
-        unitTotal += qty;
-      }
+      if ((quantities[p.id] ?? "").trim() !== "") count += 1;
     }
-    return { itemCount, unitTotal };
+    return count;
   }, [products, quantities]);
 
   function setQty(productId: string, value: string) {
@@ -111,8 +104,8 @@ function NewOrderPage() {
     }
 
     const clean = products
-      .map((p) => ({ product: p, qty: Number(quantities[p.id]) }))
-      .filter((it) => Number.isFinite(it.qty) && it.qty > 0);
+      .map((p) => ({ product: p, qty: (quantities[p.id] ?? "").trim() }))
+      .filter((it) => it.qty !== "");
 
     if (clean.length === 0) {
       toast.error("Enter a quantity for at least one product");
@@ -125,33 +118,32 @@ function NewOrderPage() {
         .from("orders")
         .insert({
           customer_id: selectedCustomer.id,
-          delivery_date: deliveryDate || null,
           customer_name: selectedCustomer.name,
           account_code: selectedCustomer.account_code,
           delivery_address: selectedCustomer.delivery_address,
           reference: selectedCustomer.reference,
-          sales_code: orderedBy.trim() || null,
+          sales_code: selectedCustomer.sales_code,
         })
         .select()
         .single();
-      if (orderErr || !order) throw orderErr ?? new Error("Failed to create sales requisition");
+      if (orderErr || !order) throw orderErr ?? new Error("Failed to create order requisition");
 
       const rows = clean.map((it, idx) => ({
         order_id: order.id,
         product_id: it.product.id,
         product_code: it.product.code,
         product_description: it.product.description,
-        product_unit: it.product.unit,
+        product_unit: "",
         quantity: it.qty,
         position: idx,
       }));
       const { error: itemsErr } = await supabase.from("order_items").insert(rows);
       if (itemsErr) throw itemsErr;
 
-      toast.success(`Sales Requisition ${order.document_number} created`);
+      toast.success(`Order Requisition ${order.document_number} created`);
       navigate({ to: "/orders/$id", params: { id: order.id } });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to save sales requisition";
+      const msg = e instanceof Error ? e.message : "Failed to save order requisition";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -165,11 +157,11 @@ function NewOrderPage() {
           New document
         </div>
         <h1 className="mt-2 font-display text-4xl leading-none text-foreground md:text-5xl">
-          Sales Requisition
+          Order Requisition
         </h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Select a customer, enter quantities against the product catalogue, then create the Sales
-          Requisition.
+          Select a customer by code, enter quantities against the product catalogue, then create the
+          Order Requisition.
         </p>
       </div>
 
@@ -187,24 +179,25 @@ function NewOrderPage() {
                   role="combobox"
                   className="mt-1 w-full justify-between font-normal"
                 >
-                  {selectedCustomer ? selectedCustomer.name : "Select customer…"}
+                  {selectedCustomer
+                    ? selectedCustomer.account_code || selectedCustomer.name
+                    : "Select customer…"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search customers…" />
+                  <CommandInput placeholder="Search by customer code…" />
                   <CommandList>
                     <CommandEmpty>No customer found.</CommandEmpty>
                     <CommandGroup>
                       {customers.map((c) => (
                         <CommandItem
                           key={c.id}
-                          value={`${c.name} ${c.account_code ?? ""}`}
+                          value={`${c.account_code ?? ""} ${c.name}`}
                           onSelect={() => {
                             setCustomerId(c.id);
                             setCustomerOpen(false);
-                            setOrderedBy((prev) => prev || c.sales_code || "");
                           }}
                         >
                           <Check
@@ -214,10 +207,10 @@ function NewOrderPage() {
                             )}
                           />
                           <div className="flex flex-col">
-                            <span>{c.name}</span>
-                            {c.account_code && (
-                              <span className="text-xs text-muted-foreground">{c.account_code}</span>
-                            )}
+                            <span className="font-medium">
+                              {c.account_code || <span className="text-muted-foreground">—</span>}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{c.name}</span>
                           </div>
                         </CommandItem>
                       ))}
@@ -232,7 +225,7 @@ function NewOrderPage() {
             <div className="grid gap-4 rounded-md border border-border bg-muted/40 p-4 sm:grid-cols-2">
               <ReadField label="Account code" value={selectedCustomer.account_code} />
               <ReadField label="Reference" value={selectedCustomer.reference} />
-              <ReadField label="Sales code" value={selectedCustomer.sales_code} />
+              <ReadField label="Order by" value={selectedCustomer.sales_code} />
               <ReadField label="Tax number" value={selectedCustomer.tax_number} />
               <ReadField
                 label="Tax rate"
@@ -256,29 +249,6 @@ function NewOrderPage() {
               </div>
             </div>
           )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="max-w-xs">
-              <Label htmlFor="delivery-date">Delivery date</Label>
-              <Input
-                id="delivery-date"
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div className="max-w-xs">
-              <Label htmlFor="ordered-by">Order by</Label>
-              <Input
-                id="ordered-by"
-                value={orderedBy}
-                onChange={(e) => setOrderedBy(e.target.value)}
-                placeholder="Name of person ordering…"
-                className="mt-1"
-              />
-            </div>
-          </div>
         </CardContent>
       </Card>
 
@@ -318,13 +288,12 @@ function NewOrderPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[36rem] border-collapse text-sm">
+              <table className="w-full min-w-[32rem] border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-left">
                     <th className="px-4 py-3 font-semibold">Code</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
-                    <th className="px-4 py-3 font-semibold">Unit</th>
-                    <th className="w-36 px-4 py-3 text-right font-semibold">Quantity</th>
+                    <th className="w-40 px-4 py-3 text-right font-semibold">Quantity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -332,15 +301,14 @@ function NewOrderPage() {
                     <Fragment key={group.label}>
                       <tr className="bg-muted/50">
                         <td
-                          colSpan={4}
+                          colSpan={3}
                           className="px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
                         >
                           {group.label}
                         </td>
                       </tr>
                       {group.products.map((p) => {
-                        const hasQty =
-                          Number(quantities[p.id]) > 0 && Number.isFinite(Number(quantities[p.id]));
+                        const hasQty = (quantities[p.id] ?? "").trim() !== "";
                         return (
                           <tr
                             key={p.id}
@@ -353,17 +321,13 @@ function NewOrderPage() {
                               {p.code}
                             </td>
                             <td className="px-4 py-2 text-foreground/90">{p.description}</td>
-                            <td className="px-4 py-2 text-muted-foreground">{p.unit}</td>
                             <td className="px-4 py-2 text-right">
                               <Input
-                                type="number"
-                                min="0"
-                                step="any"
-                                inputMode="decimal"
-                                placeholder="0"
+                                type="text"
+                                placeholder=""
                                 value={quantities[p.id] ?? ""}
                                 onChange={(e) => setQty(p.id, e.target.value)}
-                                className="ml-auto h-9 w-28 text-right tabular-nums"
+                                className="ml-auto h-9 w-32 text-right"
                                 aria-label={`Quantity for ${p.code}`}
                               />
                             </td>
@@ -385,18 +349,11 @@ function NewOrderPage() {
       >
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-3.5">
           <div className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{summary.itemCount}</span>{" "}
-            {summary.itemCount === 1 ? "item" : "items"}
-            <span className="mx-2 text-border">·</span>
-            <span className="font-semibold tabular-nums text-foreground">
-              {Number.isInteger(summary.unitTotal)
-                ? summary.unitTotal
-                : summary.unitTotal.toFixed(2)}
-            </span>{" "}
-            units total
+            <span className="font-semibold text-foreground">{itemCount}</span>{" "}
+            {itemCount === 1 ? "item" : "items"}
           </div>
           <Button onClick={handleSubmit} disabled={submitting} size="lg">
-            {submitting ? "Creating…" : "Create Sales Requisition"}
+            {submitting ? "Creating…" : "Create Order Requisition"}
           </Button>
         </div>
       </div>
