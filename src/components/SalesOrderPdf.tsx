@@ -46,6 +46,7 @@ export type SalesOrderPdfData = {
     code: string;
     description: string;
     quantity: string;
+    price?: string | null;
   }[];
   logoSrc?: string;
 };
@@ -268,6 +269,14 @@ const s = StyleSheet.create({
   thCode: { width: "18%", paddingLeft: 8 },
   thDesc: { width: "58%", paddingLeft: 8 },
   thQty: { width: "24%", textAlign: "right", paddingRight: 8 },
+  colCodeWithPrice: { width: "16%" },
+  colDescWithPrice: { width: "48%" },
+  colQtyWithPrice: { width: "18%", textAlign: "right" },
+  colPrice: { width: "18%", textAlign: "right" },
+  thCodeWithPrice: { width: "16%", paddingLeft: 8 },
+  thDescWithPrice: { width: "48%", paddingLeft: 8 },
+  thQtyWithPrice: { width: "18%", textAlign: "right", paddingRight: 8 },
+  thPrice: { width: "18%", textAlign: "right", paddingRight: 8 },
   footer: {
     marginTop: 28,
     borderTopWidth: 1.5,
@@ -326,14 +335,19 @@ const s = StyleSheet.create({
 function padItems(items: SalesOrderPdfData["items"], min = 6) {
   const rows = [...items];
   while (rows.length < min) {
-    rows.push({ code: "", description: "", quantity: "" });
+    rows.push({ code: "", description: "", quantity: "", price: "" });
   }
   return rows;
+}
+
+function hasAnyPrice(items: SalesOrderPdfData["items"]) {
+  return items.some((it) => (it.price ?? "").trim() !== "");
 }
 
 export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
   const rows = padItems(data.items);
   const filledCount = data.items.length;
+  const showPrice = hasAnyPrice(data.items);
 
   return (
     <Document title={`Order Requisition ${data.documentNumber}`} author={COMPANY.brandName}>
@@ -393,9 +407,10 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
 
           <View style={s.table}>
             <View style={s.tableHeader}>
-              <Text style={[s.th, s.thCode]}>Code</Text>
-              <Text style={[s.th, s.thDesc]}>Description</Text>
-              <Text style={[s.th, s.thQty]}>Quantity</Text>
+              <Text style={[s.th, showPrice ? s.thCodeWithPrice : s.thCode]}>Code</Text>
+              <Text style={[s.th, showPrice ? s.thDescWithPrice : s.thDesc]}>Description</Text>
+              <Text style={[s.th, showPrice ? s.thQtyWithPrice : s.thQty]}>Quantity</Text>
+              {showPrice ? <Text style={[s.th, s.thPrice]}>Price</Text> : null}
             </View>
             {rows.map((it, i) => {
               const isBlank = i >= filledCount;
@@ -403,9 +418,18 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
               const rowStyle = isBlank ? [s.row, s.rowBlank] : isAlt ? [s.row, s.rowAlt] : [s.row];
               return (
                 <View key={i} style={rowStyle} wrap={false}>
-                  <Text style={[s.cell, s.colCode, s.cellPadL]}>{it.code}</Text>
-                  <Text style={[s.cell, s.colDesc, s.cellPadL]}>{it.description}</Text>
-                  <Text style={[s.cell, s.colQty, s.cellPadR]}>{it.quantity}</Text>
+                  <Text style={[s.cell, showPrice ? s.colCodeWithPrice : s.colCode, s.cellPadL]}>
+                    {it.code}
+                  </Text>
+                  <Text style={[s.cell, showPrice ? s.colDescWithPrice : s.colDesc, s.cellPadL]}>
+                    {it.description}
+                  </Text>
+                  <Text style={[s.cell, showPrice ? s.colQtyWithPrice : s.colQty, s.cellPadR]}>
+                    {it.quantity}
+                  </Text>
+                  {showPrice ? (
+                    <Text style={[s.cell, s.colPrice, s.cellPadR]}>{it.price ?? ""}</Text>
+                  ) : null}
                 </View>
               );
             })}
@@ -466,6 +490,7 @@ export function buildPdfData(input: {
     product_description: string;
     quantity: string;
     product_unit: string;
+    price?: string | null;
   }[];
 }): SalesOrderPdfData {
   return {
@@ -480,6 +505,7 @@ export function buildPdfData(input: {
       code: it.product_code,
       description: it.product_description,
       quantity: it.quantity,
+      price: it.price ?? null,
     })),
   };
 }

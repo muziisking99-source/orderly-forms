@@ -1,54 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { fetchOrder, fetchOrderItems, queryKeys } from "@/lib/queries";
 import { SalesOrderDocument } from "@/components/SalesOrderDocument";
+import { DocumentSkeleton } from "@/components/loading/DocumentSkeleton";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/orders/$id")({
   component: SalesOrderPage,
 });
 
-type Order = {
-  id: string;
-  document_number: string;
-  order_date: string;
-  customer_name: string;
-  account_code: string | null;
-  delivery_address: string | null;
-  reference: string | null;
-  sales_code: string | null;
-};
-
-type Item = {
-  id: string;
-  product_code: string;
-  product_description: string;
-  quantity: string;
-  position: number;
-};
-
 function SalesOrderPage() {
   const { id } = Route.useParams();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const [{ data: o }, { data: is }] = await Promise.all([
-        supabase.from("orders").select("*").eq("id", id).maybeSingle(),
-        supabase.from("order_items").select("*").eq("order_id", id).order("position"),
-      ]);
-      setOrder(o as Order | null);
-      setItems((is as Item[]) ?? []);
-      setLoading(false);
-    })();
-  }, [id]);
+  const orderQuery = useQuery({
+    queryKey: queryKeys.order(id),
+    queryFn: () => fetchOrder(id),
+  });
+  const itemsQuery = useQuery({
+    queryKey: queryKeys.orderItems(id),
+    queryFn: () => fetchOrderItems(id),
+  });
+
+  const order = orderQuery.data ?? null;
+  const items = itemsQuery.data ?? [];
+  const loading = orderQuery.isPending || itemsQuery.isPending;
 
   const viewModel = useMemo(() => {
     if (!order) return null;
@@ -65,6 +45,7 @@ function SalesOrderPage() {
         code: it.product_code,
         description: it.product_description,
         quantity: it.quantity,
+        price: it.price,
       })),
     };
   }, [order, items]);
@@ -87,6 +68,7 @@ function SalesOrderPage() {
           product_description: it.product_description,
           quantity: it.quantity,
           product_unit: "",
+          price: it.price,
         })),
       });
       await downloadSalesOrderPdf(data);
@@ -99,11 +81,16 @@ function SalesOrderPage() {
   }
 
   if (loading) {
-    return <div className="p-10 text-sm text-muted-foreground">Loading…</div>;
+    return (
+      <div className="bg-muted/40 px-4 py-6 sm:px-6">
+        <DocumentSkeleton />
+      </div>
+    );
   }
+
   if (!order || !viewModel) {
     return (
-      <div className="p-10">
+      <div className="p-6 sm:p-10">
         <p className="text-sm text-muted-foreground">Order Requisition not found.</p>
         <Link to="/" className="mt-4 inline-block text-sm underline">
           Back to new Order Requisition
@@ -114,8 +101,8 @@ function SalesOrderPage() {
 
   return (
     <div className="bg-muted/40 print:bg-white">
-      <div className="mx-auto max-w-[210mm] px-6 py-6 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto max-w-[210mm] px-4 py-4 sm:px-6 sm:py-6 print:hidden">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <Link
             to="/"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -123,10 +110,14 @@ function SalesOrderPage() {
             <ArrowLeft className="h-4 w-4" /> New Order Requisition
           </Link>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" /> Print
             </Button>
-            <Button onClick={() => void handleDownloadPdf()} disabled={downloading}>
+            <Button
+              className="flex-1 sm:flex-none"
+              onClick={() => void handleDownloadPdf()}
+              disabled={downloading}
+            >
               <Download className="mr-2 h-4 w-4" />
               {downloading ? "Preparing PDF…" : "Download PDF"}
             </Button>
@@ -134,7 +125,7 @@ function SalesOrderPage() {
         </div>
       </div>
 
-      <div className="px-4 pb-12 print:px-0 print:pb-0">
+      <div className="px-2 pb-10 sm:px-4 sm:pb-12 print:px-0 print:pb-0">
         <SalesOrderDocument order={viewModel} />
       </div>
 

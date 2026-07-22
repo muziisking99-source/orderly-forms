@@ -1,10 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Eraser, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { groupProductsByRange } from "@/lib/brand";
+import {
+  fetchCustomers,
+  fetchProductsCatalog,
+  queryKeys,
+  type CustomerRow,
+} from "@/lib/queries";
+import { ProductCatalogTable } from "@/components/ProductCatalogTable";
+import { PageHeaderSkeleton } from "@/components/loading/PageHeaderSkeleton";
+import { TableSkeleton } from "@/components/loading/TableSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,45 +34,27 @@ export const Route = createFileRoute("/")({
   component: NewOrderPage,
 });
 
-type Customer = {
-  id: string;
-  name: string;
-  account_code: string | null;
-  delivery_address: string | null;
-  reference: string | null;
-  tax_number: string | null;
-  tax_rate: number | null;
-  sales_code: string | null;
-};
-
-type Product = {
-  id: string;
-  code: string;
-  description: string;
-  unit: string;
-};
-
 function NewOrderPage() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
-  /** productId -> quantity string (blank = omitted) */
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [prices, setPrices] = useState<Record<string, string>>({});
   const [productFilter, setProductFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      const [{ data: cs }, { data: ps }] = await Promise.all([
-        supabase.from("customers").select("*").order("name"),
-        supabase.from("products").select("*").order("code"),
-      ]);
-      setCustomers((cs as Customer[]) ?? []);
-      setProducts((ps as Product[]) ?? []);
-    })();
-  }, []);
+  const customersQuery = useQuery({
+    queryKey: queryKeys.customers,
+    queryFn: fetchCustomers,
+  });
+  const productsQuery = useQuery({
+    queryKey: queryKeys.productsCatalog,
+    queryFn: fetchProductsCatalog,
+  });
+
+  const customers = customersQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+  const loading = customersQuery.isPending || productsQuery.isPending;
 
   const selectedCustomer = useMemo(
     () => customers.find((c) => c.id === customerId) ?? null,
@@ -79,8 +70,6 @@ function NewOrderPage() {
     );
   }, [products, productFilter]);
 
-  const grouped = useMemo(() => groupProductsByRange(filteredProducts), [filteredProducts]);
-
   const itemCount = useMemo(() => {
     let count = 0;
     for (const p of products) {
@@ -93,8 +82,13 @@ function NewOrderPage() {
     setQuantities((prev) => ({ ...prev, [productId]: value }));
   }
 
+  function setPrice(productId: string, value: string) {
+    setPrices((prev) => ({ ...prev, [productId]: value }));
+  }
+
   function clearAllQuantities() {
     setQuantities({});
+    setPrices({});
   }
 
   async function handleSubmit() {
@@ -104,7 +98,11 @@ function NewOrderPage() {
     }
 
     const clean = products
-      .map((p) => ({ product: p, qty: (quantities[p.id] ?? "").trim() }))
+      .map((p) => ({
+        product: p,
+        qty: (quantities[p.id] ?? "").trim(),
+        price: (prices[p.id] ?? "").trim(),
+      }))
       .filter((it) => it.qty !== "");
 
     if (clean.length === 0) {
@@ -135,6 +133,7 @@ function NewOrderPage() {
         product_description: it.product.description,
         product_unit: "",
         quantity: it.qty,
+        price: it.price || null,
         position: idx,
       }));
       const { error: itemsErr } = await supabase.from("order_items").insert(rows);
@@ -150,13 +149,39 @@ function NewOrderPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-6 pb-28 md:px-6 md:py-10 lg:max-w-6xl">
+        <PageHeaderSkeleton />
+        <div className="mt-6 space-y-6">
+          <Card>
+            <CardHeader>
+              <SkeletonTitle />
+            </CardHeader>
+            <CardContent>
+              <div className="h-10 w-full animate-pulse rounded-md bg-primary/10" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <SkeletonTitle />
+            </CardHeader>
+            <CardContent className="p-0">
+              <TableSkeleton rows={10} />
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10 pb-28">
-      <div className="mb-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 pb-28 md:px-6 md:py-10 lg:max-w-6xl">
+      <div className="mb-6 md:mb-8">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           New document
         </div>
-        <h1 className="mt-2 font-display text-4xl leading-none text-foreground md:text-5xl">
+        <h1 className="mt-2 font-display text-3xl leading-none text-foreground md:text-5xl">
           Order Requisition
         </h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
@@ -165,7 +190,7 @@ function NewOrderPage() {
         </p>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-4 md:mt-6">
         <CardHeader>
           <CardTitle>Customer</CardTitle>
         </CardHeader>
@@ -179,19 +204,24 @@ function NewOrderPage() {
                   role="combobox"
                   className="mt-1 w-full justify-between font-normal"
                 >
-                  {selectedCustomer
-                    ? selectedCustomer.account_code || selectedCustomer.name
-                    : "Select customer…"}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                  <span className="truncate">
+                    {selectedCustomer
+                      ? selectedCustomer.account_code || selectedCustomer.name
+                      : "Select customer…"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0"
+                align="start"
+              >
                 <Command>
                   <CommandInput placeholder="Search by customer code…" />
                   <CommandList>
                     <CommandEmpty>No customer found.</CommandEmpty>
                     <CommandGroup>
-                      {customers.map((c) => (
+                      {customers.map((c: CustomerRow) => (
                         <CommandItem
                           key={c.id}
                           value={`${c.account_code ?? ""} ${c.name}`}
@@ -202,15 +232,15 @@ function NewOrderPage() {
                         >
                           <Check
                             className={cn(
-                              "mr-2 h-4 w-4",
+                              "mr-2 h-4 w-4 shrink-0",
                               customerId === c.id ? "opacity-100" : "opacity-0",
                             )}
                           />
-                          <div className="flex flex-col">
+                          <div className="flex min-w-0 flex-col">
                             <span className="font-medium">
                               {c.account_code || <span className="text-muted-foreground">—</span>}
                             </span>
-                            <span className="text-xs text-muted-foreground">{c.name}</span>
+                            <span className="truncate text-xs text-muted-foreground">{c.name}</span>
                           </div>
                         </CommandItem>
                       ))}
@@ -252,16 +282,17 @@ function NewOrderPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="mt-4 md:mt-6">
+        <CardHeader className="flex flex-col gap-4">
           <div>
             <CardTitle>Products</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Enter quantities for the lines you need. Empty rows are ignored.
+              Enter quantities for the lines you need. Price is optional — leave blank to hide it on
+              the document.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[14rem] flex-1 sm:flex-none">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full flex-1 sm:min-w-[14rem] sm:flex-none">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={productFilter}
@@ -271,94 +302,64 @@ function NewOrderPage() {
                 aria-label="Filter products"
               />
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={clearAllQuantities}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={clearAllQuantities}
+            >
               <Eraser className="mr-1.5 h-4 w-4" />
-              Clear all quantities
+              Clear all
             </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {products.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-muted-foreground">
+            <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
               No products yet. Add them in Admin.
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-muted-foreground">
+            <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
               No products match “{productFilter}”.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[32rem] border-collapse text-sm">
-                <thead className="sticky top-0 z-10 bg-card">
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-3 font-semibold">Code</th>
-                    <th className="px-4 py-3 font-semibold">Description</th>
-                    <th className="w-40 px-4 py-3 text-right font-semibold">Quantity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {grouped.map((group) => (
-                    <Fragment key={group.label}>
-                      <tr className="bg-muted/50">
-                        <td
-                          colSpan={3}
-                          className="px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                        >
-                          {group.label}
-                        </td>
-                      </tr>
-                      {group.products.map((p) => {
-                        const hasQty = (quantities[p.id] ?? "").trim() !== "";
-                        return (
-                          <tr
-                            key={p.id}
-                            className={cn(
-                              "border-b border-border/70 transition-colors",
-                              hasQty ? "bg-primary/5" : "hover:bg-muted/30",
-                            )}
-                          >
-                            <td className="px-4 py-2 font-medium tabular-nums text-foreground">
-                              {p.code}
-                            </td>
-                            <td className="px-4 py-2 text-foreground/90">{p.description}</td>
-                            <td className="px-4 py-2 text-right">
-                              <Input
-                                type="text"
-                                placeholder=""
-                                value={quantities[p.id] ?? ""}
-                                onChange={(e) => setQty(p.id, e.target.value)}
-                                className="ml-auto h-9 w-32 text-right"
-                                aria-label={`Quantity for ${p.code}`}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ProductCatalogTable
+              products={filteredProducts}
+              quantities={quantities}
+              prices={prices}
+              onQtyChange={setQty}
+              onPriceChange={setPrice}
+            />
           )}
         </CardContent>
       </Card>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur-md print:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md print:hidden"
         style={{ "--tw-shadow": "0 -8px 24px rgba(11,31,58,0.06)" } as CSSProperties}
       >
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-3.5">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:px-6 lg:max-w-6xl">
           <div className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{itemCount}</span>{" "}
             {itemCount === 1 ? "item" : "items"}
           </div>
-          <Button onClick={handleSubmit} disabled={submitting} size="lg">
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            size="lg"
+            className="w-full sm:w-auto"
+          >
             {submitting ? "Creating…" : "Create Order Requisition"}
           </Button>
         </div>
       </div>
     </main>
   );
+}
+
+function SkeletonTitle() {
+  return <div className="h-5 w-28 animate-pulse rounded bg-primary/10" />;
 }
 
 function ReadField({ label, value }: { label: string; value: string | null | undefined }) {

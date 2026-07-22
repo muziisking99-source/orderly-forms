@@ -1,9 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchCustomers,
+  fetchProducts,
+  queryKeys,
+  type CustomerRow,
+  type ProductRow,
+} from "@/lib/queries";
+import { TableSkeleton } from "@/components/loading/TableSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,36 +32,23 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type Customer = {
-  id: string;
-  name: string;
-  account_code: string | null;
-  delivery_address: string | null;
-  reference: string | null;
-  tax_number: string | null;
-  tax_rate: number | null;
-  sales_code: string | null;
-};
-
-type Product = {
-  id: string;
-  code: string;
-  description: string;
-  unit: string;
-};
+type Customer = CustomerRow;
+type Product = ProductRow;
 
 function AdminPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <div className="mb-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
+      <div className="mb-6 md:mb-8">
         <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace</div>
-        <h1 className="mt-2 font-serif text-5xl leading-none text-foreground">
+        <h1 className="mt-2 font-display text-3xl leading-none text-foreground md:text-5xl">
           Admin <span className="italic text-primary">panel</span>
         </h1>
-        <p className="mt-3 text-sm text-muted-foreground">Manage customers and products, or bulk upload from a spreadsheet.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Manage customers and products, or bulk upload from a spreadsheet.
+        </p>
       </div>
 
-      <Tabs defaultValue="customers" className="mt-6">
+      <Tabs defaultValue="customers" className="mt-4 md:mt-6">
         <TabsList>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
@@ -68,8 +64,6 @@ function AdminPage() {
   );
 }
 
-// ------------------- Customers -------------------
-
 const EMPTY_CUSTOMER: Omit<Customer, "id"> = {
   name: "",
   account_code: "",
@@ -81,37 +75,40 @@ const EMPTY_CUSTOMER: Omit<Customer, "id"> = {
 };
 
 function CustomersPanel() {
-  const [rows, setRows] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: rows = [], isPending: loading } = useQuery({
+    queryKey: queryKeys.customers,
+    queryFn: fetchCustomers,
+  });
   const [editing, setEditing] = useState<Customer | null>(null);
   const [open, setOpen] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    const { data } = await supabase.from("customers").select("*").order("name");
-    setRows((data as Customer[]) ?? []);
-    setLoading(false);
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.customers }),
+    ]);
   }
-  useEffect(() => {
-    void load();
-  }, []);
 
   async function remove(id: string) {
     if (!confirm("Delete this customer?")) return;
     const { error } = await supabase.from("customers").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    if (error) {
+      const msg = error.message.includes("foreign key")
+        ? "This customer is used on existing order requisitions and can’t be deleted."
+        : error.message;
+      toast.error(msg);
+    } else {
       toast.success("Customer deleted");
-      void load();
+      void invalidate();
     }
   }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Customers</CardTitle>
-        <div className="flex gap-2">
-          <BulkImportDialog config={CUSTOMER_IMPORT_CONFIG} onImported={() => void load()} />
+        <div className="flex flex-wrap gap-2">
+          <BulkImportDialog config={CUSTOMER_IMPORT_CONFIG} onImported={() => void invalidate()} />
           <Button
             size="sm"
             onClick={() => {
@@ -125,18 +122,18 @@ function CustomersPanel() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="py-6 text-sm text-muted-foreground">Loading…</div>
+          <TableSkeleton rows={6} />
         ) : rows.length === 0 ? (
           <div className="py-6 text-sm text-muted-foreground">No customers yet.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto text-xs sm:text-sm">
+            <table className="w-full">
               <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="py-2 pr-4">Name</th>
                   <th className="py-2 pr-4">Account</th>
-                  <th className="py-2 pr-4">Reference</th>
-                  <th className="py-2 pr-4">Order by</th>
+                  <th className="hidden py-2 pr-4 sm:table-cell">Reference</th>
+                  <th className="hidden py-2 pr-4 md:table-cell">Order by</th>
                   <th className="py-2 w-24"></th>
                 </tr>
               </thead>
@@ -145,8 +142,8 @@ function CustomersPanel() {
                   <tr key={c.id} className="border-b border-border">
                     <td className="py-2 pr-4 font-medium">{c.name}</td>
                     <td className="py-2 pr-4">{c.account_code || "—"}</td>
-                    <td className="py-2 pr-4">{c.reference || "—"}</td>
-                    <td className="py-2 pr-4">{c.sales_code || "—"}</td>
+                    <td className="hidden py-2 pr-4 sm:table-cell">{c.reference || "—"}</td>
+                    <td className="hidden py-2 pr-4 md:table-cell">{c.sales_code || "—"}</td>
                     <td className="py-2 text-right">
                       <Button
                         variant="ghost"
@@ -176,7 +173,7 @@ function CustomersPanel() {
         customer={editing}
         onSaved={() => {
           setOpen(false);
-          void load();
+          void invalidate();
         }}
       />
     </Card>
@@ -229,7 +226,7 @@ function CustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{form.id ? "Edit customer" : "New customer"}</DialogTitle>
         </DialogHeader>
@@ -294,40 +291,44 @@ function CustomerDialog({
   );
 }
 
-// ------------------- Products -------------------
-
 function ProductsPanel() {
-  const [rows, setRows] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: rows = [], isPending: loading } = useQuery({
+    queryKey: queryKeys.products,
+    queryFn: fetchProducts,
+  });
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    const { data } = await supabase.from("products").select("*").order("code");
-    setRows((data as Product[]) ?? []);
-    setLoading(false);
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.products }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsCatalog }),
+    ]);
   }
-  useEffect(() => {
-    void load();
-  }, []);
 
   async function remove(id: string) {
-    if (!confirm("Delete this product?")) return;
+    if (
+      !confirm(
+        "Delete this product? Existing order requisitions will keep the product code and description.",
+      )
+    ) {
+      return;
+    }
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
       toast.success("Product deleted");
-      void load();
+      void invalidate();
     }
   }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Products</CardTitle>
-        <div className="flex gap-2">
-          <BulkImportDialog config={PRODUCT_IMPORT_CONFIG} onImported={() => void load()} />
+        <div className="flex flex-wrap gap-2">
+          <BulkImportDialog config={PRODUCT_IMPORT_CONFIG} onImported={() => void invalidate()} />
           <Button
             size="sm"
             onClick={() => {
@@ -341,17 +342,17 @@ function ProductsPanel() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="py-6 text-sm text-muted-foreground">Loading…</div>
+          <TableSkeleton rows={6} />
         ) : rows.length === 0 ? (
           <div className="py-6 text-sm text-muted-foreground">No products yet.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto text-xs sm:text-sm">
+            <table className="w-full">
               <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="py-2 pr-4">Code</th>
                   <th className="py-2 pr-4">Description</th>
-                  <th className="py-2 pr-4">Unit</th>
+                  <th className="hidden py-2 pr-4 sm:table-cell">Unit</th>
                   <th className="py-2 w-24"></th>
                 </tr>
               </thead>
@@ -360,7 +361,7 @@ function ProductsPanel() {
                   <tr key={p.id} className="border-b border-border">
                     <td className="py-2 pr-4 font-mono text-xs">{p.code}</td>
                     <td className="py-2 pr-4">{p.description}</td>
-                    <td className="py-2 pr-4">{p.unit}</td>
+                    <td className="hidden py-2 pr-4 sm:table-cell">{p.unit || "—"}</td>
                     <td className="py-2 text-right">
                       <Button
                         variant="ghost"
@@ -390,7 +391,7 @@ function ProductsPanel() {
         product={editing}
         onSaved={() => {
           setOpen(false);
-          void load();
+          void invalidate();
         }}
       />
     </Card>
@@ -416,12 +417,32 @@ function ProductDialog({
   }, [product]);
 
   async function save() {
-    if (!form.code.trim() || !form.description.trim() || !form.unit.trim()) {
-      toast.error("Code, description, and unit are required");
+    if (!form.code.trim() || !form.description.trim()) {
+      toast.error("Code and description are required");
       return;
     }
     setSaving(true);
-    const payload = { code: form.code, description: form.description, unit: form.unit };
+    const payload: {
+      code: string;
+      description: string;
+      unit: string;
+      sort_order?: number;
+    } = {
+      code: form.code,
+      description: form.description,
+      unit: form.unit.trim() || "",
+    };
+
+    if (!form.id) {
+      const { data: last } = await supabase
+        .from("products")
+        .select("sort_order")
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      payload.sort_order = ((last as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
+    }
+
     const { error } = form.id
       ? await supabase.from("products").update(payload).eq("id", form.id)
       : await supabase.from("products").insert(payload);
@@ -435,7 +456,7 @@ function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{form.id ? "Edit product" : "New product"}</DialogTitle>
         </DialogHeader>
@@ -449,11 +470,11 @@ function ProductDialog({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </Field>
-          <Field label="Unit *">
+          <Field label="Unit">
             <Input
               value={form.unit}
               onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              placeholder="e.g. kg, box, ea"
+              placeholder="Optional"
             />
           </Field>
         </div>
@@ -470,7 +491,7 @@ function ProductDialog({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
@@ -478,8 +499,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-
-// ------------------- Import configs -------------------
 
 const CUSTOMER_IMPORT_CONFIG: BulkImportConfig = {
   table: "customers",
@@ -514,9 +533,14 @@ const PRODUCT_IMPORT_CONFIG: BulkImportConfig = {
   entityLabel: "product",
   dedupeKey: "code",
   insertDefaults: { unit: "" },
+  sortOrderField: "sort_order",
   fields: [
     { key: "code", label: "Code", required: true, aliases: ["product code", "sku"] },
-    { key: "description", label: "Description", required: true, aliases: ["name", "product", "product description"] },
+    {
+      key: "description",
+      label: "Description",
+      required: true,
+      aliases: ["name", "product", "product description"],
+    },
   ],
 };
-

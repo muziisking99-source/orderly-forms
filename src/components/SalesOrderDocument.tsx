@@ -14,13 +14,18 @@ export type SalesOrderViewModel = {
     code: string;
     description: string;
     quantity: string;
+    price?: string | null;
   }[];
 };
+
+function hasAnyPrice(items: SalesOrderViewModel["items"]) {
+  return items.some((it) => (it.price ?? "").trim() !== "");
+}
 
 function padItems(items: SalesOrderViewModel["items"], min = 6) {
   const rows = [...items];
   while (rows.length < min) {
-    rows.push({ id: `blank-${rows.length}`, code: "", description: "", quantity: "" });
+    rows.push({ id: `blank-${rows.length}`, code: "", description: "", quantity: "", price: "" });
   }
   return rows;
 }
@@ -28,6 +33,7 @@ function padItems(items: SalesOrderViewModel["items"], min = 6) {
 /** On-screen / print layout for an Order Requisition document. */
 export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
   const rows = padItems(order.items);
+  const showPrice = hasAnyPrice(order.items);
 
   return (
     <article
@@ -44,12 +50,12 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
         } as CSSProperties
       }
     >
-      <header className="bg-[var(--so-navy)] px-8 py-6 text-white print:px-6">
+      <header className="bg-[var(--so-navy)] px-4 py-5 text-white sm:px-8 print:px-6">
         <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
           <img
             src="/golden-fresh-logo.png"
             alt="Golden Fresh"
-            className="mb-4 h-16 w-auto object-contain sm:h-[4.5rem]"
+            className="mb-4 h-14 w-auto object-contain sm:h-[4.5rem]"
           />
           <p className="text-[0.8rem] leading-relaxed text-white/90">{COMPANY.address}</p>
           <p className="mt-1 text-[0.8rem] text-white/90">Tel: {COMPANY.tel}</p>
@@ -59,8 +65,8 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
       <div className="h-[3px] bg-[var(--so-gold)]" />
       <div className="h-[1.5px] bg-[var(--so-red)]" />
 
-      <div className="px-8 py-6 print:px-6">
-        <div className="mb-5 flex items-stretch justify-between gap-4">
+      <div className="px-4 py-5 sm:px-8 sm:py-6 print:px-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between">
           <div className="flex flex-col justify-center">
             <div className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--so-red)]">
               Official document
@@ -69,7 +75,7 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
               Order Requisition
             </h2>
           </div>
-          <dl className="min-w-[10.5rem] border border-[var(--so-navy)] bg-[#F7F5F0] text-sm font-body">
+          <dl className="w-full border border-[var(--so-navy)] bg-[#F7F5F0] text-sm font-body sm:min-w-[10.5rem] sm:w-auto">
             <div className="flex justify-between gap-3 border-b border-[var(--so-rule)] px-2.5 py-1.5">
               <dt className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--so-muted)]">
                 Document
@@ -122,9 +128,16 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
               <th className="px-2 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em]">
                 Description
               </th>
-              <th className="w-[22%] px-2 py-2.5 text-right text-[0.7rem] font-bold uppercase tracking-[0.08em]">
+              <th
+                className={`${showPrice ? "w-[16%]" : "w-[22%]"} px-2 py-2.5 text-right text-[0.7rem] font-bold uppercase tracking-[0.08em]`}
+              >
                 Quantity
               </th>
+              {showPrice ? (
+                <th className="w-[16%] px-2 py-2.5 text-right text-[0.7rem] font-bold uppercase tracking-[0.08em]">
+                  Price
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -138,6 +151,9 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
                 </td>
                 <td className="px-2 py-2.5 align-top">{it.description}</td>
                 <td className="px-2 py-2.5 text-right align-top">{it.quantity}</td>
+                {showPrice ? (
+                  <td className="px-2 py-2.5 text-right align-top">{it.price}</td>
+                ) : null}
               </tr>
             ))}
           </tbody>

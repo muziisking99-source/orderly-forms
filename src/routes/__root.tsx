@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AppNav } from "@/components/AppNav";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -97,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:wght@400;500;600;700&display=swap&subset=latin",
       },
     ],
   }),
@@ -121,40 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Nav() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/" className="group flex items-center gap-2.5">
-          <img
-            src="/golden-fresh-logo.png"
-            alt="Golden Fresh"
-            className="h-9 w-auto object-contain"
-          />
-          <span className="font-display text-2xl leading-none tracking-tight text-[var(--brand-navy)]">
-            Order Requisition
-          </span>
-        </Link>
-        <nav className="flex items-center gap-1">
-          <Link
-            to="/"
-            activeOptions={{ exact: true }}
-            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-[var(--brand-navy)] [&.active]:text-white"
-          >
-            New Order Requisition
-          </Link>
-          <Link
-            to="/admin"
-            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-[var(--brand-navy)] [&.active]:text-white"
-          >
-            Admin
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -169,7 +136,7 @@ function RootComponent() {
               "radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--brand-gold) 22%, transparent), transparent 42%), radial-gradient(circle at 88% 8%, color-mix(in oklab, var(--brand-navy) 10%, transparent), transparent 48%)",
           }}
         />
-        <Nav />
+        <AppNav />
         <Outlet />
       </div>
       <Toaster />

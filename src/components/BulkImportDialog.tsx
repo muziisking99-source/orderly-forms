@@ -148,6 +148,8 @@ export type BulkImportConfig = {
   fields: ImportFieldSpec[];
   /** Applied on insert when a column is omitted from the import file */
   insertDefaults?: Record<string, unknown>;
+  /** When set, each row gets this field = 0-based import position (preserves file order) */
+  sortOrderField?: string;
   /** Column used to detect duplicates (e.g. "code" or "account_code"|"name") */
   dedupeKey: string;
   /** Optional: allow duplicate detection to fall back to another field */
@@ -300,22 +302,35 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
     let updated = 0;
     let skipped = 0;
     const errors: { row: number; reason: string }[] = [];
+    let sortPos = 0;
 
     for (const r of rows) {
       if (r.errors.length > 0) {
         errors.push({ row: r.index, reason: r.errors.join("; ") });
         continue;
       }
+
+      const orderPatch =
+        config.sortOrderField != null ? { [config.sortOrderField]: sortPos++ } : {};
+
       if (r.duplicate) {
         if (mode === "skip") {
+          if (config.sortOrderField && r.duplicateOfId) {
+            const { error } = await (supabase.from(config.table) as any)
+              .update(orderPatch)
+              .eq("id", r.duplicateOfId);
+            if (error) errors.push({ row: r.index, reason: error.message });
+          }
           skipped++;
           continue;
         }
-        const { error } = await (supabase.from(config.table) as any).update(r.data).eq("id", r.duplicateOfId!);
+        const { error } = await (supabase.from(config.table) as any)
+          .update({ ...r.data, ...orderPatch })
+          .eq("id", r.duplicateOfId!);
         if (error) errors.push({ row: r.index, reason: error.message });
         else updated++;
       } else {
-        const payload = { ...config.insertDefaults, ...r.data };
+        const payload = { ...config.insertDefaults, ...r.data, ...orderPatch };
         const { error } = await (supabase.from(config.table) as any).insert(payload);
         if (error) errors.push({ row: r.index, reason: error.message });
         else added++;
@@ -355,7 +370,7 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
           if (!o) reset();
         }}
       >
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Bulk import {config.entityLabel}s</DialogTitle>
           </DialogHeader>
@@ -419,7 +434,7 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.slice(0, 100).map((r) => (
+                        {rows.slice(0, 50).map((r) => (
                           <tr key={r.index} className="border-t border-border">
                             <td className="p-2">{r.index}</td>
                             <td className="p-2">
@@ -440,9 +455,9 @@ export function BulkImportDialog({ config, onImported }: { config: BulkImportCon
                         ))}
                       </tbody>
                     </table>
-                    {rows.length > 100 && (
+                    {rows.length > 50 && (
                       <div className="p-2 text-center text-xs text-muted-foreground">
-                        Showing first 100 of {rows.length} rows
+                        Showing first 50 of {rows.length} rows
                       </div>
                     )}
                   </div>
