@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCustomers,
@@ -29,6 +30,7 @@ import {
 import { BulkImportDialog, type BulkImportConfig } from "@/components/BulkImportDialog";
 
 export const Route = createFileRoute("/admin")({
+  beforeLoad: () => requireAdmin(),
   component: AdminPage,
 });
 
@@ -68,9 +70,6 @@ const EMPTY_CUSTOMER: Omit<Customer, "id"> = {
   name: "",
   account_code: "",
   delivery_address: "",
-  reference: "",
-  tax_number: "",
-  tax_rate: null,
   sales_code: "",
 };
 
@@ -132,8 +131,7 @@ function CustomersPanel() {
                 <tr>
                   <th className="py-2 pr-4">Name</th>
                   <th className="py-2 pr-4">Account</th>
-                  <th className="hidden py-2 pr-4 sm:table-cell">Reference</th>
-                  <th className="hidden py-2 pr-4 md:table-cell">Order by</th>
+                  <th className="py-2 pr-4">Order by</th>
                   <th className="py-2 w-24"></th>
                 </tr>
               </thead>
@@ -142,8 +140,7 @@ function CustomersPanel() {
                   <tr key={c.id} className="border-b border-border">
                     <td className="py-2 pr-4 font-medium">{c.name}</td>
                     <td className="py-2 pr-4">{c.account_code || "—"}</td>
-                    <td className="hidden py-2 pr-4 sm:table-cell">{c.reference || "—"}</td>
-                    <td className="hidden py-2 pr-4 md:table-cell">{c.sales_code || "—"}</td>
+                    <td className="py-2 pr-4">{c.sales_code || "—"}</td>
                     <td className="py-2 text-right">
                       <Button
                         variant="ghost"
@@ -208,10 +205,10 @@ function CustomerDialog({
       name: form.name,
       account_code: form.account_code || null,
       delivery_address: form.delivery_address || null,
-      reference: form.reference || null,
-      tax_number: form.tax_number || null,
-      tax_rate: form.tax_rate === null || Number.isNaN(form.tax_rate) ? null : Number(form.tax_rate),
       sales_code: form.sales_code || null,
+      reference: null,
+      tax_number: null,
+      tax_rate: null,
     };
     const { error } = form.id
       ? await supabase.from("customers").update(payload).eq("id", form.id)
@@ -240,32 +237,10 @@ function CustomerDialog({
               onChange={(e) => setForm({ ...form, account_code: e.target.value })}
             />
           </Field>
-          <Field label="Reference">
-            <Input
-              value={form.reference ?? ""}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
-          </Field>
           <Field label="Order by">
             <Input
               value={form.sales_code ?? ""}
               onChange={(e) => setForm({ ...form, sales_code: e.target.value })}
-            />
-          </Field>
-          <Field label="Tax number">
-            <Input
-              value={form.tax_number ?? ""}
-              onChange={(e) => setForm({ ...form, tax_number: e.target.value })}
-            />
-          </Field>
-          <Field label="Tax rate (%)">
-            <Input
-              type="number"
-              step="any"
-              value={form.tax_rate ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, tax_rate: e.target.value === "" ? null : Number(e.target.value) })
-              }
             />
           </Field>
           <div className="sm:col-span-2">
@@ -509,21 +484,6 @@ const CUSTOMER_IMPORT_CONFIG: BulkImportConfig = {
     { key: "name", label: "Name", required: true, aliases: ["customer name", "customer"] },
     { key: "account_code", label: "Account code", aliases: ["account", "account no", "account number"] },
     { key: "delivery_address", label: "Delivery address", aliases: ["address", "ship to"] },
-    { key: "reference", label: "Reference", aliases: ["ref"] },
-    { key: "tax_number", label: "Tax reference", aliases: ["tax number", "tax ref", "vat", "vat number"] },
-    {
-      key: "tax_rate",
-      label: "Tax exempt",
-      aliases: ["tax rate", "vat rate", "tax", "exempt"],
-      transform: (v) => {
-        if (v == null || v === "") return null;
-        const s = String(v).trim().toLowerCase();
-        if (["yes", "true", "y", "exempt", "1"].includes(s)) return 0;
-        if (["no", "false", "n", "0"].includes(s)) return null;
-        const n = Number(String(v).replace("%", ""));
-        return Number.isFinite(n) ? n : null;
-      },
-    },
     { key: "sales_code", label: "Order by", aliases: ["sales", "salesperson", "rep", "order by"] },
   ],
 };

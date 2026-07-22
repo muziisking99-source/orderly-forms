@@ -175,9 +175,6 @@ function exampleValueFor(entity: string, key: string): string {
         name: "Acme Trading Co.",
         account_code: "ACM001",
         delivery_address: "12 Warehouse Rd\nSpringfield, 2000",
-        reference: "PO-2025-001",
-        tax_number: "VAT123456789",
-        tax_rate: "15",
         sales_code: "REP-04",
       }
     : {

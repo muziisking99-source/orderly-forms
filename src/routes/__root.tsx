@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "@/lib/auth";
 import { AppNav } from "@/components/AppNav";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -127,19 +128,21 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="relative min-h-screen bg-background text-foreground">
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0 -z-10 opacity-60 print:hidden"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--brand-gold) 22%, transparent), transparent 42%), radial-gradient(circle at 88% 8%, color-mix(in oklab, var(--brand-navy) 10%, transparent), transparent 48%)",
-          }}
-        />
-        <AppNav />
-        <Outlet />
-      </div>
-      <Toaster />
+      <AuthProvider>
+        <div className="relative min-h-screen bg-background text-foreground">
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 -z-10 opacity-60 print:hidden"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--brand-gold) 22%, transparent), transparent 42%), radial-gradient(circle at 88% 8%, color-mix(in oklab, var(--brand-navy) 10%, transparent), transparent 48%)",
+            }}
+          />
+          <AppNav />
+          <Outlet />
+        </div>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

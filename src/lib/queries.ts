@@ -4,8 +4,10 @@ export const queryKeys = {
   customers: ["customers"] as const,
   products: ["products"] as const,
   productsCatalog: ["products", "catalog"] as const,
+  myOrders: ["orders", "mine"] as const,
   order: (id: string) => ["order", id] as const,
   orderItems: (orderId: string) => ["orderItems", orderId] as const,
+  profile: (id: string) => ["profile", id] as const,
 };
 
 export type CustomerRow = {
@@ -13,9 +15,6 @@ export type CustomerRow = {
   name: string;
   account_code: string | null;
   delivery_address: string | null;
-  reference: string | null;
-  tax_number: string | null;
-  tax_rate: number | null;
   sales_code: string | null;
 };
 
@@ -24,7 +23,7 @@ export type ProductRow = {
   code: string;
   description: string;
   unit: string;
-  sort_order: number;
+  sort_order?: number;
 };
 
 export type ProductCatalogRow = {
@@ -43,6 +42,19 @@ export type OrderRow = {
   delivery_address: string | null;
   reference: string | null;
   sales_code: string | null;
+  user_id: string | null;
+  pdf_path: string | null;
+  created_at?: string;
+};
+
+export type OrderListRow = {
+  id: string;
+  document_number: string;
+  order_date: string;
+  customer_name: string;
+  account_code: string | null;
+  pdf_path: string | null;
+  created_at: string;
 };
 
 export type OrderItemRow = {
@@ -57,7 +69,7 @@ export type OrderItemRow = {
 export async function fetchCustomers(): Promise<CustomerRow[]> {
   const { data, error } = await supabase
     .from("customers")
-    .select("id,name,account_code,delivery_address,reference,tax_number,tax_rate,sales_code")
+    .select("id,name,account_code,delivery_address,sales_code")
     .order("name");
   if (error) throw error;
   return (data as CustomerRow[]) ?? [];
@@ -81,6 +93,15 @@ export async function fetchProductsCatalog(): Promise<ProductCatalogRow[]> {
     .order("code", { ascending: true });
   if (error) throw error;
   return (data as ProductCatalogRow[]) ?? [];
+}
+
+export async function fetchMyOrders(): Promise<OrderListRow[]> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id,document_number,order_date,customer_name,account_code,pdf_path,created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as OrderListRow[]) ?? [];
 }
 
 export async function fetchOrder(id: string): Promise<OrderRow | null> {

@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Eraser, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { requireSession, useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCustomers,
@@ -11,13 +12,15 @@ import {
   queryKeys,
   type CustomerRow,
 } from "@/lib/queries";
+import {
+  generatePdfBlob,
+  pdfDataFromOrder,
+  uploadOrderPdf,
+} from "@/lib/order-pdf";
 import { ProductCatalogTable } from "@/components/ProductCatalogTable";
-import { PageHeaderSkeleton } from "@/components/loading/PageHeaderSkeleton";
 import { TableSkeleton } from "@/components/loading/TableSkeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -27,21 +30,24 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => requireSession(),
   component: NewOrderPage,
 });
 
 function NewOrderPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [productFilter, setProductFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
 
   const customersQuery = useQuery({
     queryKey: queryKeys.customers,
@@ -112,6 +118,8 @@ function NewOrderPage() {
 
     setSubmitting(true);
     try {
+      if (!user) throw new Error("You must be signed in");
+
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
@@ -119,8 +127,9 @@ function NewOrderPage() {
           customer_name: selectedCustomer.name,
           account_code: selectedCustomer.account_code,
           delivery_address: selectedCustomer.delivery_address,
-          reference: selectedCustomer.reference,
+          reference: null,
           sales_code: selectedCustomer.sales_code,
+          user_id: user.id,
         })
         .select()
         .single();
@@ -139,7 +148,23 @@ function NewOrderPage() {
       const { error: itemsErr } = await supabase.from("order_items").insert(rows);
       if (itemsErr) throw itemsErr;
 
+      try {
+        const itemRows = rows.map((r, i) => ({
+          id: String(i),
+          product_code: r.product_code,
+          product_description: r.product_description,
+          quantity: r.quantity,
+          price: r.price,
+          position: r.position,
+        }));
+        const blob = await generatePdfBlob(pdfDataFromOrder(order, itemRows));
+        await uploadOrderPdf(user.id, order.id, blob);
+      } catch (pdfErr) {
+        console.warn("[pdf] upload after create failed", pdfErr);
+      }
+
       toast.success(`Order Requisition ${order.document_number} created`);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrders });
       navigate({ to: "/orders/$id", params: { id: order.id } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to save order requisition";
@@ -151,58 +176,38 @@ function NewOrderPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-6 pb-28 md:px-6 md:py-10 lg:max-w-6xl">
-        <PageHeaderSkeleton />
-        <div className="mt-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <SkeletonTitle />
-            </CardHeader>
-            <CardContent>
-              <div className="h-10 w-full animate-pulse rounded-md bg-primary/10" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <SkeletonTitle />
-            </CardHeader>
-            <CardContent className="p-0">
-              <TableSkeleton rows={10} />
-            </CardContent>
-          </Card>
+      <main className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden md:h-[calc(100dvh-4.25rem)]">
+        <div className="shrink-0 border-b border-border/70 px-4 py-3 md:px-6">
+          <div className="mx-auto h-8 max-w-6xl animate-pulse rounded-md bg-primary/10" />
+        </div>
+        <div className="min-h-0 flex-1 p-0">
+          <TableSkeleton rows={12} />
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 pb-28 md:px-6 md:py-10 lg:max-w-6xl">
-      <div className="mb-6 md:mb-8">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          New document
-        </div>
-        <h1 className="mt-2 font-display text-3xl leading-none text-foreground md:text-5xl">
-          Order Requisition
-        </h1>
-        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Select a customer by code, enter quantities against the product catalogue, then create the
-          Order Requisition.
-        </p>
-      </div>
+    <main className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden md:h-[calc(100dvh-4.25rem)]">
+      {/* Compact top strip */}
+      <div className="shrink-0 border-b border-border/70 bg-background/95 px-4 py-3 md:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="font-display text-xl leading-none text-[var(--brand-navy)] md:text-2xl">
+              New Order Requisition
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Price optional — blank hides it on the document
+            </p>
+          </div>
 
-      <Card className="mt-4 md:mt-6">
-        <CardHeader>
-          <CardTitle>Customer</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Customer</Label>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)_auto] sm:items-center">
             <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
-                  className="mt-1 w-full justify-between font-normal"
+                  className="w-full justify-between font-normal"
                 >
                   <span className="truncate">
                     {selectedCustomer
@@ -228,6 +233,7 @@ function NewOrderPage() {
                           onSelect={() => {
                             setCustomerId(c.id);
                             setCustomerOpen(false);
+                            setAddressOpen(false);
                           }}
                         >
                           <Check
@@ -240,7 +246,10 @@ function NewOrderPage() {
                             <span className="font-medium">
                               {c.account_code || <span className="text-muted-foreground">—</span>}
                             </span>
-                            <span className="truncate text-xs text-muted-foreground">{c.name}</span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {c.name}
+                              {c.sales_code?.trim() ? ` · ${c.sales_code}` : ""}
+                            </span>
                           </div>
                         </CommandItem>
                       ))}
@@ -249,59 +258,18 @@ function NewOrderPage() {
                 </Command>
               </PopoverContent>
             </Popover>
-          </div>
 
-          {selectedCustomer && (
-            <div className="grid gap-4 rounded-md border border-border bg-muted/40 p-4 sm:grid-cols-2">
-              <ReadField label="Account code" value={selectedCustomer.account_code} />
-              <ReadField label="Reference" value={selectedCustomer.reference} />
-              <ReadField label="Order by" value={selectedCustomer.sales_code} />
-              <ReadField label="Tax number" value={selectedCustomer.tax_number} />
-              <ReadField
-                label="Tax rate"
-                value={
-                  selectedCustomer.tax_rate != null
-                    ? selectedCustomer.tax_rate === 0
-                      ? "Exempt"
-                      : `${selectedCustomer.tax_rate}%`
-                    : null
-                }
-              />
-              <div className="sm:col-span-2">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Delivery address
-                </Label>
-                <Textarea
-                  readOnly
-                  value={selectedCustomer.delivery_address ?? ""}
-                  className="mt-1 bg-background"
-                />
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="mt-4 md:mt-6">
-        <CardHeader className="flex flex-col gap-4">
-          <div>
-            <CardTitle>Products</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Enter quantities for the lines you need. Price is optional — leave blank to hide it on
-              the document.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative w-full flex-1 sm:min-w-[14rem] sm:flex-none">
+            <div className="relative min-w-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={productFilter}
                 onChange={(e) => setProductFilter(e.target.value)}
-                placeholder="Filter by code or description…"
+                placeholder="Filter products…"
                 className="pl-8"
                 aria-label="Filter products"
               />
             </div>
+
             <Button
               type="button"
               variant="outline"
@@ -310,42 +278,78 @@ function NewOrderPage() {
               onClick={clearAllQuantities}
             >
               <Eraser className="mr-1.5 h-4 w-4" />
-              Clear all
+              Clear
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {products.length === 0 ? (
-            <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
-              No products yet. Add them in Admin.
+
+          {selectedCustomer ? (
+            <div className="min-w-0 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span>
+                  <span className="text-muted-foreground">Account </span>
+                  <span className="font-medium text-foreground">
+                    {selectedCustomer.account_code || "—"}
+                  </span>
+                </span>
+                <span>
+                  <span className="text-muted-foreground">Order by </span>
+                  <span className="font-medium text-foreground">
+                    {selectedCustomer.sales_code?.trim() || "—"}
+                  </span>
+                </span>
+                <span className="font-medium text-foreground">{selectedCustomer.name}</span>
+                {selectedCustomer.delivery_address ? (
+                  <button
+                    type="button"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={() => setAddressOpen((o) => !o)}
+                  >
+                    {addressOpen ? "Hide address" : "Show address"}
+                  </button>
+                ) : null}
+              </div>
+              {addressOpen && selectedCustomer.delivery_address ? (
+                <p className="mt-1 whitespace-pre-line text-foreground/80">
+                  {selectedCustomer.delivery_address}
+                </p>
+              ) : null}
             </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
-              No products match “{productFilter}”.
-            </div>
-          ) : (
-            <ProductCatalogTable
-              products={filteredProducts}
-              quantities={quantities}
-              prices={prices}
-              onQtyChange={setQty}
-              onPriceChange={setPrice}
-            />
-          )}
-        </CardContent>
-      </Card>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Catalogue fills remaining viewport — only scroll here */}
+      <div className="mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-hidden border-x border-border/40 bg-card">
+        {products.length === 0 ? (
+          <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
+            No products yet. Add them in Admin.
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="px-4 py-10 text-sm text-muted-foreground sm:px-6">
+            No products match “{productFilter}”.
+          </div>
+        ) : (
+          <ProductCatalogTable
+            products={filteredProducts}
+            quantities={quantities}
+            prices={prices}
+            onQtyChange={setQty}
+            onPriceChange={setPrice}
+          />
+        )}
+      </div>
 
       <div
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md print:hidden"
         style={{ "--tw-shadow": "0 -8px 24px rgba(11,31,58,0.06)" } as CSSProperties}
       >
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:px-6 lg:max-w-6xl">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
           <div className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{itemCount}</span>{" "}
             {itemCount === 1 ? "item" : "items"}
           </div>
           <Button
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={submitting}
             size="lg"
             className="w-full sm:w-auto"
@@ -355,20 +359,5 @@ function NewOrderPage() {
         </div>
       </div>
     </main>
-  );
-}
-
-function SkeletonTitle() {
-  return <div className="h-5 w-28 animate-pulse rounded bg-primary/10" />;
-}
-
-function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div>
-      <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
-      <div className="mt-1 rounded-md border border-border bg-background px-3 py-2 text-sm">
-        {value || <span className="text-muted-foreground">—</span>}
-      </div>
-    </div>
   );
 }

@@ -118,8 +118,10 @@ export type Database = {
           document_number: string
           id: string
           order_date: string
+          pdf_path: string | null
           reference: string | null
           sales_code: string | null
+          user_id: string | null
         }
         Insert: {
           account_code?: string | null
@@ -131,8 +133,10 @@ export type Database = {
           document_number?: string
           id?: string
           order_date?: string
+          pdf_path?: string | null
           reference?: string | null
           sales_code?: string | null
+          user_id?: string | null
         }
         Update: {
           account_code?: string | null
@@ -144,8 +148,10 @@ export type Database = {
           document_number?: string
           id?: string
           order_date?: string
+          pdf_path?: string | null
           reference?: string | null
           sales_code?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -156,6 +162,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          is_admin: boolean
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          is_admin?: boolean
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_admin?: boolean
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -192,7 +219,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

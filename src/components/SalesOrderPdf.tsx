@@ -8,7 +8,7 @@ import {
   Image,
   pdf,
 } from "@react-pdf/renderer";
-import { BRAND, COMPANY, formatDisplayDate } from "@/lib/brand";
+import { BRAND, COMPANY, PALLET_CONFIGURATION, formatDisplayDate } from "@/lib/brand";
 import { GOLDEN_FRESH_LOGO_DATA_URL } from "@/assets/golden-fresh-logo-data";
 
 Font.register({
@@ -64,7 +64,7 @@ const STRIPE = "#F7F5F0";
 const s = StyleSheet.create({
   page: {
     paddingTop: 0,
-    paddingBottom: 48,
+    paddingBottom: 32,
     paddingHorizontal: 0,
     fontFamily: "NunitoPdf",
     fontSize: 9,
@@ -73,66 +73,66 @@ const s = StyleSheet.create({
   },
   headerBand: {
     backgroundColor: NAVY,
-    paddingTop: 24,
-    paddingBottom: 20,
-    paddingHorizontal: 36,
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 28,
     alignItems: "flex-start",
   },
   logo: {
-    width: 88,
-    height: 64,
-    marginBottom: 10,
+    width: 64,
+    height: 46,
+    marginBottom: 6,
   },
   letterheadLine: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     color: "#E8ECF2",
-    lineHeight: 1.5,
+    lineHeight: 1.35,
   },
   letterheadEmail: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     color: "#FFFFFF",
     fontWeight: 700,
-    marginTop: 4,
+    marginTop: 2,
   },
   goldStripe: {
-    height: 3,
+    height: 2.5,
     backgroundColor: GOLD,
   },
   redAccent: {
-    height: 1.5,
+    height: 1.25,
     backgroundColor: RED,
   },
   body: {
-    paddingHorizontal: 36,
-    paddingTop: 18,
+    paddingHorizontal: 28,
+    paddingTop: 12,
   },
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "stretch",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   titleLeft: {
     justifyContent: "center",
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 10,
   },
   docEyebrow: {
-    fontSize: 7,
+    fontSize: 6.5,
     fontWeight: 700,
     color: RED,
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   docTitle: {
     fontFamily: "AbrilFatface",
-    fontSize: 22,
+    fontSize: 18,
     color: NAVY,
     letterSpacing: 0.3,
   },
   metaBox: {
-    width: 168,
+    width: 148,
     borderWidth: 1,
     borderColor: NAVY,
     backgroundColor: STRIPE,
@@ -141,60 +141,59 @@ const s = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: RULE_SOFT,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    paddingHorizontal: 7,
   },
   metaBoxRowLast: {
     flexDirection: "row",
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    paddingHorizontal: 7,
   },
   metaBoxLabel: {
-    width: 72,
-    fontSize: 6.5,
+    width: 64,
+    fontSize: 6,
     fontWeight: 700,
     color: MUTED,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   metaBoxValue: {
     flex: 1,
-    fontSize: 8.5,
+    fontSize: 8,
     fontWeight: 700,
     color: NAVY,
     textAlign: "right",
   },
   infoRow: {
     flexDirection: "row",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   deliverCard: {
     flex: 1.4,
     borderWidth: 1,
     borderColor: RULE,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    minHeight: 78,
-    marginRight: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+    marginRight: 10,
   },
   sectionLabel: {
-    fontSize: 6.5,
+    fontSize: 6,
     fontWeight: 700,
     color: RED,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     textTransform: "uppercase",
-    marginBottom: 5,
-  },
-  customerName: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: NAVY,
     marginBottom: 3,
   },
+  customerName: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: NAVY,
+    marginBottom: 2,
+  },
   address: {
-    fontSize: 8.5,
+    fontSize: 8,
     color: INK,
-    lineHeight: 1.4,
+    lineHeight: 1.3,
   },
   codesStack: {
     flex: 1,
@@ -202,27 +201,27 @@ const s = StyleSheet.create({
     borderColor: RULE,
   },
   codeCell: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
     borderBottomWidth: 1,
     borderBottomColor: RULE_SOFT,
     justifyContent: "center",
   },
   codeCellLast: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
     justifyContent: "center",
   },
   codeLabel: {
-    fontSize: 6.5,
+    fontSize: 6,
     fontWeight: 700,
     color: MUTED,
     textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 3,
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   codeValue: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 700,
     color: NAVY,
   },
@@ -233,50 +232,50 @@ const s = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: NAVY,
-    paddingVertical: 7,
+    paddingVertical: 4,
     paddingHorizontal: 0,
   },
   th: {
     color: "#FFFFFF",
-    fontSize: 7,
+    fontSize: 6.5,
     fontWeight: 700,
     textTransform: "uppercase",
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
   },
   row: {
     flexDirection: "row",
-    borderBottomWidth: 0.75,
+    borderBottomWidth: 0.6,
     borderBottomColor: RULE,
-    minHeight: 24,
+    minHeight: 16,
     alignItems: "center",
   },
   rowAlt: {
     backgroundColor: STRIPE,
   },
   rowBlank: {
-    minHeight: 26,
+    minHeight: 16,
   },
   cell: {
-    fontSize: 8.5,
+    fontSize: 8,
     color: INK,
-    paddingVertical: 5,
+    paddingVertical: 2.5,
   },
-  cellPadL: { paddingLeft: 8 },
-  cellPadR: { paddingRight: 8 },
+  cellPadL: { paddingLeft: 6 },
+  cellPadR: { paddingRight: 6 },
   colCode: { width: "18%" },
   colDesc: { width: "58%" },
   colQty: { width: "24%", textAlign: "right" },
-  thCode: { width: "18%", paddingLeft: 8 },
-  thDesc: { width: "58%", paddingLeft: 8 },
-  thQty: { width: "24%", textAlign: "right", paddingRight: 8 },
+  thCode: { width: "18%", paddingLeft: 6 },
+  thDesc: { width: "58%", paddingLeft: 6 },
+  thQty: { width: "24%", textAlign: "right", paddingRight: 6 },
   colCodeWithPrice: { width: "16%" },
   colDescWithPrice: { width: "48%" },
   colQtyWithPrice: { width: "18%", textAlign: "right" },
   colPrice: { width: "18%", textAlign: "right" },
-  thCodeWithPrice: { width: "16%", paddingLeft: 8 },
-  thDescWithPrice: { width: "48%", paddingLeft: 8 },
-  thQtyWithPrice: { width: "18%", textAlign: "right", paddingRight: 8 },
-  thPrice: { width: "18%", textAlign: "right", paddingRight: 8 },
+  thCodeWithPrice: { width: "16%", paddingLeft: 6 },
+  thDescWithPrice: { width: "48%", paddingLeft: 6 },
+  thQtyWithPrice: { width: "18%", textAlign: "right", paddingRight: 6 },
+  thPrice: { width: "18%", textAlign: "right", paddingRight: 6 },
   footer: {
     marginTop: 28,
     borderTopWidth: 1.5,
@@ -311,28 +310,83 @@ const s = StyleSheet.create({
   },
   pageFooter: {
     position: "absolute",
-    bottom: 18,
-    left: 36,
-    right: 36,
+    bottom: 14,
+    left: 28,
+    right: 28,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 0.75,
     borderTopColor: RULE,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   pageFooterText: {
-    fontSize: 6.5,
+    fontSize: 6,
     color: MUTED,
   },
   pageFooterReg: {
-    fontSize: 6.5,
+    fontSize: 6,
     color: MUTED,
     textAlign: "right",
   },
+  palletWrap: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: INK,
+  },
+  palletHeader: {
+    backgroundColor: PAPER,
+    borderBottomWidth: 1,
+    borderBottomColor: INK,
+    paddingVertical: 3,
+    alignItems: "center",
+  },
+  palletHeaderText: {
+    fontSize: 7,
+    fontWeight: 700,
+    color: INK,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  palletRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.75,
+    borderBottomColor: INK,
+  },
+  palletRowLast: {
+    flexDirection: "row",
+  },
+  palletProduct: {
+    width: "34%",
+    fontSize: 6,
+    color: INK,
+    paddingVertical: 2.5,
+    paddingHorizontal: 4,
+    borderRightWidth: 0.75,
+    borderRightColor: INK,
+    textTransform: "uppercase",
+  },
+  palletQty: {
+    width: "16%",
+    fontSize: 6,
+    color: INK,
+    paddingVertical: 2.5,
+    paddingHorizontal: 4,
+    borderRightWidth: 0.75,
+    borderRightColor: INK,
+    textTransform: "uppercase",
+  },
+  palletQtyLast: {
+    width: "16%",
+    fontSize: 6,
+    color: INK,
+    paddingVertical: 2.5,
+    paddingHorizontal: 4,
+    textTransform: "uppercase",
+  },
 });
 
-function padItems(items: SalesOrderPdfData["items"], min = 6) {
+function padItems(items: SalesOrderPdfData["items"], min = 3) {
   const rows = [...items];
   while (rows.length < min) {
     rows.push({ code: "", description: "", quantity: "", price: "" });
@@ -394,10 +448,6 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
                 <Text style={s.codeLabel}>Account Code</Text>
                 <Text style={s.codeValue}>{data.accountCode || "—"}</Text>
               </View>
-              <View style={s.codeCell}>
-                <Text style={s.codeLabel}>Your Reference</Text>
-                <Text style={s.codeValue}>{data.reference || "—"}</Text>
-              </View>
               <View style={s.codeCellLast}>
                 <Text style={s.codeLabel}>Order By</Text>
                 <Text style={s.codeValue}>{data.orderBy || "—"}</Text>
@@ -435,27 +485,29 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
             })}
           </View>
 
-          <View style={s.footer}>
-            <Text style={s.footerTitle}>Received in good order</Text>
-            <View style={s.signRow}>
-              <View style={s.signCol}>
-                <View style={s.signLine} />
-                <Text style={s.signLabel}>Signed</Text>
-              </View>
-              <View style={s.signCol}>
-                <View style={s.signLine} />
-                <Text style={s.signLabel}>Date</Text>
-              </View>
+          <View style={s.palletWrap} wrap={false}>
+            <View style={s.palletHeader}>
+              <Text style={s.palletHeaderText}>Pallet Configuration</Text>
             </View>
+            {PALLET_CONFIGURATION.map((pair, i) => {
+              const isLast = i === PALLET_CONFIGURATION.length - 1;
+              const left = pair[0] ?? { product: "", qty: "" };
+              const right = pair[1] ?? { product: "", qty: "" };
+              return (
+                <View key={i} style={isLast ? s.palletRowLast : s.palletRow}>
+                  <Text style={s.palletProduct}>{left.product}</Text>
+                  <Text style={s.palletQty}>{left.qty}</Text>
+                  <Text style={s.palletProduct}>{right.product}</Text>
+                  <Text style={s.palletQtyLast}>{right.qty}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
         <View style={s.pageFooter} fixed>
           <Text style={s.pageFooterText}>
             {COMPANY.brandName}  ·  {COMPANY.legalName}
-          </Text>
-          <Text style={s.pageFooterReg}>
-            CK {COMPANY.ckNo}  ·  VAT {COMPANY.vatNo}
           </Text>
         </View>
       </Page>

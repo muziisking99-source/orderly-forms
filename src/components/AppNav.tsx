@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Menu } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LogOut, Menu } from "lucide-react";
+import { toast } from "sonner";
 
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -19,6 +21,24 @@ const mobileLinkClass =
 
 export function AppNav() {
   const [open, setOpen] = useState(false);
+  const { user, isAdmin, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  if (pathname === "/login" || loading || !user) {
+    return null;
+  }
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+      toast.success("Signed out");
+      void navigate({ to: "/login" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Sign-out failed";
+      toast.error(msg);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md print:hidden">
@@ -34,17 +54,24 @@ export function AppNav() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <Link to="/" activeOptions={{ exact: true }} className={navLinkClass}>
-            New Order Requisition
+            New
           </Link>
-          <Link to="/admin" className={navLinkClass}>
-            Admin
+          <Link to="/orders" className={navLinkClass}>
+            History
           </Link>
+          {isAdmin ? (
+            <Link to="/admin" className={navLinkClass}>
+              Admin
+            </Link>
+          ) : null}
+          <Button variant="ghost" size="sm" className="ml-1" onClick={() => void handleSignOut()}>
+            <LogOut className="mr-1.5 h-4 w-4" />
+            Sign out
+          </Button>
         </nav>
 
-        {/* Mobile nav */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button
@@ -71,9 +98,24 @@ export function AppNav() {
               >
                 New
               </Link>
-              <Link to="/admin" className={mobileLinkClass} onClick={() => setOpen(false)}>
-                Admin
+              <Link to="/orders" className={mobileLinkClass} onClick={() => setOpen(false)}>
+                History
               </Link>
+              {isAdmin ? (
+                <Link to="/admin" className={mobileLinkClass} onClick={() => setOpen(false)}>
+                  Admin
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className={`${mobileLinkClass} text-left`}
+                onClick={() => {
+                  setOpen(false);
+                  void handleSignOut();
+                }}
+              >
+                Sign out
+              </button>
             </nav>
           </SheetContent>
         </Sheet>

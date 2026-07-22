@@ -3,7 +3,7 @@
 export const COMPANY = {
   brandName: "GOLDEN FRESH BISCUITS",
   legalName: "YUNMA FOODS CC",
-  address: "P O Box 21226, Roshnee, 1936",
+  address: "49 Blackwood Rd, Anchorville, Lenasia, 1824",
   tel: "(011) 857-1455",
   fax: "(011) 857-1458",
   email: "accounts@goldenfresh.co.za",
@@ -11,6 +11,38 @@ export const COMPANY = {
   ckNo: "1998/60253/23",
   vatNo: "4280177702",
 } as const;
+
+/** Static reference table printed under line items on Order Requisitions. */
+export const PALLET_CONFIGURATION: { product: string; qty: string }[][] = [
+  [
+    { product: "LUV A LOT / JUST GINGER (5x48x16g)", qty: "91 BOXES" },
+    { product: "CREAMS (5x40x22g)", qty: "91 BOXES" },
+  ],
+  [
+    { product: "JOKER (48x30g)", qty: "336 BOXES" },
+    { product: "TRIO (48x25g)", qty: "325 BOXES" },
+  ],
+  [
+    { product: "CREAMS (12x140g)", qty: "250 BOXES" },
+    { product: "TRIO (12X110g)", qty: "390 BOXES" },
+  ],
+  [
+    { product: "ENERGY GLUCOSE (48x30g)", qty: "312 BOXES" },
+    { product: "GF 1.5 KG", qty: "400 BAILERS" },
+  ],
+  [
+    { product: "TOP UP (48X20g)", qty: "350 BOXES" },
+    { product: "GF 3 KG", qty: "200 BAILERS" },
+  ],
+  [
+    { product: "ALL STAR (48x40g)", qty: "270 BOXES" },
+    { product: "FRESH BITES 300'S", qty: "360 BAILERS" },
+  ],
+  [
+    { product: "MINIS (50x25g)", qty: "250 BAILERS" },
+    { product: "", qty: "" },
+  ],
+];
 
 export const BRAND = {
   navy: "#0B1F3A",
