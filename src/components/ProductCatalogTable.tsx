@@ -15,7 +15,6 @@ function rowsInImportOrder(products: ProductCatalogRow[]): TableRow[] {
   for (const p of products) {
     const label = productGroupLabel(p.code);
     if (label !== lastLabel) {
-      // Skip the catch-all "Other" section header — products still list below
       if (label !== "Other") {
         rows.push({ type: "group", key: `h-${label}-${p.id}`, label });
       }
@@ -45,9 +44,72 @@ export function ProductCatalogTable({
 
   return (
     <div className={cn("h-full overflow-auto overscroll-contain", className)}>
-      <table className="w-full table-fixed border-collapse text-sm">
+      {/* Mobile: stacked cards so description is fully readable */}
+      <div className="sm:hidden">
+        {rows.map((row) => {
+          if (row.type === "group") {
+            return (
+              <div
+                key={row.key}
+                className="bg-muted/50 px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                {row.label}
+              </div>
+            );
+          }
+
+          const p = row.product;
+          const hasQty = (quantities[p.id] ?? "").trim() !== "";
+          const hasPrice = (prices[p.id] ?? "").trim() !== "";
+
+          return (
+            <div
+              key={row.key}
+              className={cn(
+                "border-b border-border/70 px-3 py-2.5",
+                hasQty || hasPrice ? "bg-primary/5" : undefined,
+              )}
+            >
+              <div className="text-xs font-medium tabular-nums text-muted-foreground">{p.code}</div>
+              <div className="mt-0.5 text-sm leading-snug text-foreground">{p.description}</div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-[0.65rem] font-medium text-muted-foreground">
+                    Qty
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="text"
+                    value={quantities[p.id] ?? ""}
+                    onChange={(e) => onQtyChange(p.id, e.target.value)}
+                    className="h-9 w-full px-2 text-center text-sm"
+                    aria-label={`Quantity for ${p.code}`}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[0.65rem] font-medium text-muted-foreground">
+                    Price
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="text"
+                    value={prices[p.id] ?? ""}
+                    onChange={(e) => onPriceChange(p.id, e.target.value)}
+                    className="h-9 w-full px-2 text-center text-sm"
+                    aria-label={`Price for ${p.code}`}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div className="h-24" aria-hidden />
+      </div>
+
+      {/* Desktop / tablet: table */}
+      <table className="hidden w-full table-fixed border-collapse text-sm sm:table">
         <colgroup>
-          <col className="w-[6.5rem]" />
+          <col className="w-[7rem]" />
           <col />
           <col className="w-[6rem]" />
           <col className="w-[6rem]" />
@@ -90,9 +152,7 @@ export function ProductCatalogTable({
                 <td className="truncate px-3 py-2 text-xs font-medium tabular-nums sm:px-4 sm:text-sm">
                   {p.code}
                 </td>
-                <td className="truncate px-2 py-2 text-xs text-foreground/90 sm:text-sm">
-                  {p.description}
-                </td>
+                <td className="px-2 py-2 text-xs text-foreground/90 sm:text-sm">{p.description}</td>
                 <td className="px-2 py-1.5">
                   <Input
                     type="text"
@@ -114,7 +174,6 @@ export function ProductCatalogTable({
               </tr>
             );
           })}
-          {/* Spacer so the last row can scroll clear of the fixed create bar */}
           <tr aria-hidden>
             <td colSpan={4} className="h-24 border-0 p-0" />
           </tr>

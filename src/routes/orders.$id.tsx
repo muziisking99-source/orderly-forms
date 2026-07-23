@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Printer, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +26,8 @@ function SalesOrderPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
   const [busy, setBusy] = useState<"download" | "share" | null>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+  const pdfBlobRef = useRef<Blob | null>(null);
 
   const orderQuery = useQuery({
     queryKey: queryKeys.order(id),
@@ -60,17 +62,44 @@ function SalesOrderPage() {
     };
   }, [order, items]);
 
-  async function ensureStoredPdf() {
-    if (!order || !user) throw new Error("Not ready");
-    const blob = await resolveOrderPdfBlob(order, items);
-    if (!order.pdf_path) {
+  // Prefetch PDF so Share can run in the same user gesture (required on mobile)
+  useEffect(() => {
+    if (!order || itemsQuery.isPending) return;
+    let cancelled = false;
+    pdfBlobRef.current = null;
+    setPdfReady(false);
+
+    void (async () => {
       try {
-        await uploadOrderPdf(user.id, order.id, blob);
-        await orderQuery.refetch();
+        const blob = await resolveOrderPdfBlob(order, items);
+        if (cancelled) return;
+        pdfBlobRef.current = blob;
+        setPdfReady(true);
+        if (user && !order.pdf_path) {
+          try {
+            await uploadOrderPdf(user.id, order.id, blob);
+            await orderQuery.refetch();
+          } catch (e) {
+            console.warn("[pdf] store on demand failed", e);
+          }
+        }
       } catch (e) {
-        console.warn("[pdf] store on demand failed", e);
+        console.warn("[pdf] prefetch failed", e);
       }
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch identity not needed
+  }, [order?.id, order?.pdf_path, items, user?.id]);
+
+  async function getPdfBlob(): Promise<Blob> {
+    if (pdfBlobRef.current) return pdfBlobRef.current;
+    if (!order) throw new Error("Not ready");
+    const blob = await resolveOrderPdfBlob(order, items);
+    pdfBlobRef.current = blob;
+    setPdfReady(true);
     return blob;
   }
 
@@ -78,7 +107,7 @@ function SalesOrderPage() {
     if (!order) return;
     setBusy("download");
     try {
-      const blob = await ensureStoredPdf();
+      const blob = await getPdfBlob();
       await downloadBlobAsFile(blob, orderPdfFileName(order.document_number));
       toast.success("PDF downloaded");
     } catch (e: unknown) {
@@ -91,11 +120,26 @@ function SalesOrderPage() {
 
   async function handleSharePdf() {
     if (!order) return;
+
+    // If PDF isn't ready yet, prepare now — user must tap Share again (gesture rule)
+    if (!pdfBlobRef.current) {
+      setBusy("share");
+      try {
+        await getPdfBlob();
+        toast.message("PDF ready — tap Share again to open WhatsApp / apps.");
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Failed to prepare PDF";
+        toast.error(msg);
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
+
     setBusy("share");
     try {
-      const blob = await ensureStoredPdf();
       await shareOrDownloadPdf({
-        blob,
+        blob: pdfBlobRef.current,
         documentNumber: order.document_number,
         customerName: order.customer_name,
       });
@@ -120,7 +164,7 @@ function SalesOrderPage() {
     return (
       <div className="p-6 sm:p-10">
         <p className="text-sm text-muted-foreground">Order Requisition not found.</p>
-        <Link to="/orders" className="mt-4 inline-block text-sm underline">
+        <Link to="/" className="mt-4 inline-block text-sm underline">
           Back to History
         </Link>
       </div>
@@ -156,10 +200,19 @@ function SalesOrderPage() {
               disabled={busy !== null}
             >
               <Share2 className="mr-2 h-4 w-4" />
-              {busy === "share" ? "Sharing…" : "Share"}
+              {busy === "share"
+                ? "Preparing…"
+                : pdfReady
+                  ? "Share"
+                  : "Prepare share"}
             </Button>
           </div>
         </div>
+        {!pdfReady ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Preparing PDF for sharing… wait a moment, then tap Share.
+          </p>
+        ) : null}
       </div>
 
       <div className="px-2 pb-10 sm:px-4 sm:pb-12 print:px-0 print:pb-0">

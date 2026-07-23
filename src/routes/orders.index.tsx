@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -99,24 +99,41 @@ function OrdersHistoryPage() {
 function HistoryRow({ order }: { order: OrderListRow }) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<"download" | "share" | "delete" | null>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+  const pdfBlobRef = useRef<Blob | null>(null);
 
   async function withPdf(action: "download" | "share") {
     setBusy(action);
     try {
-      const full = await fetchOrder(order.id);
-      if (!full) throw new Error("Order not found");
-      const items = await fetchOrderItems(order.id);
-      const blob = await resolveOrderPdfBlob(full, items);
+      const hadBlob = pdfBlobRef.current !== null;
+      let blob = pdfBlobRef.current;
+      if (!blob) {
+        const full = await fetchOrder(order.id);
+        if (!full) throw new Error("Order not found");
+        const items = await fetchOrderItems(order.id);
+        blob = await resolveOrderPdfBlob(full, items);
+        pdfBlobRef.current = blob;
+        setPdfReady(true);
+      }
+
       if (action === "download") {
         await downloadBlobAsFile(blob, orderPdfFileName(order.document_number));
         toast.success("PDF downloaded");
-      } else {
-        await shareOrDownloadPdf({
-          blob,
-          documentNumber: order.document_number,
-          customerName: order.customer_name,
-        });
+        return;
       }
+
+      // First Share tap prepares the file; second tap opens the share sheet
+      // (mobile browsers require share() inside a fresh user tap)
+      if (!hadBlob) {
+        toast.message("PDF ready — tap Share again to open WhatsApp / apps.");
+        return;
+      }
+
+      await shareOrDownloadPdf({
+        blob,
+        documentNumber: order.document_number,
+        customerName: order.customer_name,
+      });
     } catch (e: unknown) {
       if (e instanceof Error && e.name === "AbortError") return;
       const msg = e instanceof Error ? e.message : "Something went wrong";
@@ -127,11 +144,7 @@ function HistoryRow({ order }: { order: OrderListRow }) {
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `Delete ${order.document_number}? This cannot be undone.`,
-      )
-    ) {
+    if (!confirm(`Delete ${order.document_number}? This cannot be undone.`)) {
       return;
     }
     setBusy("delete");

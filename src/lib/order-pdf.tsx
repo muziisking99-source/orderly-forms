@@ -113,7 +113,7 @@ export async function shareOrDownloadPdf(opts: {
   blob: Blob;
   documentNumber: string;
   customerName?: string;
-}): Promise<"shared" | "downloaded"> {
+}): Promise<"shared" | "downloaded" | "cancelled"> {
   const fileName = orderPdfFileName(opts.documentNumber);
   const file = new File([opts.blob], fileName, { type: "application/pdf" });
   const title = `Order Requisition ${opts.documentNumber}`;
@@ -125,12 +125,27 @@ export async function shareOrDownloadPdf(opts: {
     canShare?: (data?: ShareData) => boolean;
   };
 
-  if (typeof nav.share === "function" && nav.canShare?.({ files: [file] })) {
-    await nav.share({ files: [file], title, text });
-    return "shared";
+  const tryShare = async (data: ShareData) => {
+    if (typeof nav.share !== "function") return false;
+    if (nav.canShare && !nav.canShare(data)) return false;
+    await nav.share(data);
+    return true;
+  };
+
+  try {
+    if (await tryShare({ files: [file], title, text })) {
+      return "shared";
+    }
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === "AbortError") {
+      return "cancelled";
+    }
+    // NotAllowedError / "Permission denied" often happens after async PDF prep
+    // (user gesture expired). Fall through to download.
+    console.warn("[share]", e);
   }
 
   await downloadBlobAsFile(opts.blob, fileName);
-  toast.message("Sharing isn’t available here — PDF downloaded instead.");
+  toast.message("Couldn’t open the share sheet — PDF downloaded instead.");
   return "downloaded";
 }
