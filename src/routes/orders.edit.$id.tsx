@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/orders/$id/edit")({
+export const Route = createFileRoute("/orders/edit/$id")({
   beforeLoad: () => requireSession(),
   component: EditOrderPage,
 });
@@ -80,6 +80,12 @@ function EditOrderPage() {
     itemsQuery.isPending ||
     customersQuery.isPending ||
     productsQuery.isPending;
+
+  const loadError =
+    orderQuery.error ??
+    itemsQuery.error ??
+    customersQuery.error ??
+    productsQuery.error;
 
   useEffect(() => {
     if (hydrated || loading) return;
@@ -248,6 +254,19 @@ function EditOrderPage() {
         <div className="min-h-0 flex-1 p-0">
           <TableSkeleton rows={12} />
         </div>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className="p-6">
+        <p className="text-sm text-destructive">
+          {loadError instanceof Error ? loadError.message : "Failed to load order for editing"}
+        </p>
+        <Link to="/orders" className="mt-4 inline-block text-sm underline">
+          Back to History
+        </Link>
       </main>
     );
   }

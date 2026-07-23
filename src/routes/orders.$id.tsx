@@ -183,7 +183,7 @@ function SalesOrderPage() {
           </Link>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="flex-1 sm:flex-none" asChild>
-              <Link to="/orders/$id/edit" params={{ id: order.id }}>
+              <Link to="/orders/edit/$id" params={{ id: order.id }}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit
               </Link>
             </Button>

@@ -23,6 +23,7 @@ export type ProductRow = {
   code: string;
   description: string;
   unit: string;
+  category: string | null;
   sort_order?: number;
 };
 
@@ -30,6 +31,7 @@ export type ProductCatalogRow = {
   id: string;
   code: string;
   description: string;
+  category: string | null;
   sort_order?: number;
 };
 
@@ -84,17 +86,21 @@ export async function fetchProducts(): Promise<ProductRow[]> {
     .order("sort_order", { ascending: true })
     .order("code", { ascending: true });
   if (error) throw error;
-  return (data as ProductRow[]) ?? [];
+  return ((data as ProductRow[]) ?? []).map((p) => ({
+    ...p,
+    category: p.category ?? null,
+  }));
 }
 
 export async function fetchProductsCatalog(): Promise<ProductCatalogRow[]> {
-  const { data, error } = await supabase
-    .from("products")
-    .select("id,code,description,sort_order")
-    .order("sort_order", { ascending: true })
-    .order("code", { ascending: true });
-  if (error) throw error;
-  return (data as ProductCatalogRow[]) ?? [];
+  const products = await fetchProducts();
+  return products.map((p) => ({
+    id: p.id,
+    code: p.code,
+    description: p.description,
+    category: p.category ?? null,
+    sort_order: p.sort_order,
+  }));
 }
 
 export async function fetchMyOrders(): Promise<OrderListRow[]> {

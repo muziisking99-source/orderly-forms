@@ -178,7 +178,7 @@ function HistoryRow({ order }: { order: OrderListRow }) {
           </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/orders/$id/edit" params={{ id: order.id }}>
+          <Link to="/orders/edit/$id" params={{ id: order.id }}>
             <Pencil className="mr-1.5 h-4 w-4" />
             Edit
           </Link>

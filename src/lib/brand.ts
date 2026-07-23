@@ -102,15 +102,27 @@ export function productGroupLabel(code: string): string {
   return "Other";
 }
 
-export type GroupedProducts<T extends { code: string }> = {
+/** Catalog group label: custom category when set, otherwise inferred from code. */
+export function resolveProductCategory(product: {
+  code: string;
+  category?: string | null;
+}): string {
+  const custom = (product.category ?? "").trim();
+  if (custom) return custom;
+  return productGroupLabel(product.code);
+}
+
+export type GroupedProducts<T extends { code: string; category?: string | null }> = {
   label: string;
   products: T[];
 };
 
-export function groupProductsByRange<T extends { code: string }>(products: T[]): GroupedProducts<T>[] {
+export function groupProductsByRange<T extends { code: string; category?: string | null }>(
+  products: T[],
+): GroupedProducts<T>[] {
   const map = new Map<string, T[]>();
   for (const p of products) {
-    const label = productGroupLabel(p.code);
+    const label = resolveProductCategory(p);
     const list = map.get(label) ?? [];
     list.push(p);
     map.set(label, list);

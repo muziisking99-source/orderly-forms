@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { requireAdmin } from "@/lib/auth";
+import { productGroupLabel, resolveProductCategory } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCustomers,
@@ -28,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BulkImportDialog, type BulkImportConfig } from "@/components/BulkImportDialog";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: () => requireAdmin(),
@@ -46,7 +48,7 @@ function AdminPage() {
           Admin <span className="italic text-primary">panel</span>
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Manage customers and products, or bulk upload from a spreadsheet.
+          Manage customers, products, and category names, or bulk upload from a spreadsheet.
         </p>
       </div>
 
@@ -54,12 +56,16 @@ function AdminPage() {
         <TabsList>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
         <TabsContent value="customers" className="mt-4">
           <CustomersPanel />
         </TabsContent>
         <TabsContent value="products" className="mt-4">
           <ProductsPanel />
+        </TabsContent>
+        <TabsContent value="categories" className="mt-4">
+          <CategoriesPanel />
         </TabsContent>
       </Tabs>
     </main>
@@ -275,6 +281,12 @@ function ProductsPanel() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
 
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of rows) set.add(resolveProductCategory(p));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
   async function invalidate() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.products }),
@@ -307,7 +319,7 @@ function ProductsPanel() {
           <Button
             size="sm"
             onClick={() => {
-              setEditing({ id: "", code: "", description: "", unit: "" });
+              setEditing({ id: "", code: "", description: "", unit: "", category: null });
               setOpen(true);
             }}
           >
@@ -327,7 +339,8 @@ function ProductsPanel() {
                 <tr>
                   <th className="py-2 pr-4">Code</th>
                   <th className="py-2 pr-4">Description</th>
-                  <th className="hidden py-2 pr-4 sm:table-cell">Unit</th>
+                  <th className="hidden py-2 pr-4 sm:table-cell">Category</th>
+                  <th className="hidden py-2 pr-4 md:table-cell">Unit</th>
                   <th className="py-2 w-24"></th>
                 </tr>
               </thead>
@@ -336,7 +349,10 @@ function ProductsPanel() {
                   <tr key={p.id} className="border-b border-border">
                     <td className="py-2 pr-4 font-mono text-xs">{p.code}</td>
                     <td className="py-2 pr-4">{p.description}</td>
-                    <td className="hidden py-2 pr-4 sm:table-cell">{p.unit || "—"}</td>
+                    <td className="hidden py-2 pr-4 sm:table-cell">
+                      {resolveProductCategory(p)}
+                    </td>
+                    <td className="hidden py-2 pr-4 md:table-cell">{p.unit || "—"}</td>
                     <td className="py-2 text-right">
                       <Button
                         variant="ghost"
@@ -364,6 +380,7 @@ function ProductsPanel() {
         open={open}
         onOpenChange={setOpen}
         product={editing}
+        categoryOptions={categoryOptions}
         onSaved={() => {
           setOpen(false);
           void invalidate();
@@ -377,23 +394,51 @@ function ProductDialog({
   open,
   onOpenChange,
   product,
+  categoryOptions,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   product: Product | null;
+  categoryOptions: string[];
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<Product>({ id: "", code: "", description: "", unit: "" });
+  const [form, setForm] = useState<Product>({
+    id: "",
+    code: "",
+    description: "",
+    unit: "",
+    category: null,
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (product) setForm(product);
+    if (product) {
+      const resolved = product.category ?? resolveProductCategory(product);
+      setForm({
+        ...product,
+        category: resolved,
+      });
+    }
   }, [product]);
+
+  const selectOptions = useMemo(() => {
+    const set = new Set(categoryOptions);
+    const current = (form.category ?? "").trim();
+    if (current) set.add(current);
+    const inferred = productGroupLabel(form.code);
+    if (inferred) set.add(inferred);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [categoryOptions, form.category, form.code]);
 
   async function save() {
     if (!form.code.trim() || !form.description.trim()) {
       toast.error("Code and description are required");
+      return;
+    }
+    const categoryTrim = (form.category ?? "").trim();
+    if (!categoryTrim) {
+      toast.error("Choose a category");
       return;
     }
     setSaving(true);
@@ -401,11 +446,13 @@ function ProductDialog({
       code: string;
       description: string;
       unit: string;
+      category: string;
       sort_order?: number;
     } = {
       code: form.code,
       description: form.description,
       unit: form.unit.trim() || "",
+      category: categoryTrim,
     };
 
     if (!form.id) {
@@ -445,6 +492,22 @@ function ProductDialog({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </Field>
+          <Field label="Category *">
+            <Input
+              list="product-category-options"
+              value={form.category ?? ""}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              placeholder={productGroupLabel(form.code) || "Category name"}
+            />
+            <datalist id="product-category-options">
+              {selectOptions.map((label) => (
+                <option key={label} value={label} />
+              ))}
+            </datalist>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Type a name or pick an existing category from the suggestions.
+            </p>
+          </Field>
           <Field label="Unit">
             <Input
               value={form.unit}
@@ -463,6 +526,225 @@ function ProductDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CategoriesPanel() {
+  const queryClient = useQueryClient();
+  const { data: rows = [], isPending: loading } = useQuery({
+    queryKey: queryKeys.products,
+    queryFn: fetchProducts,
+  });
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingLabel, setSavingLabel] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const categoryLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of rows) set.add(resolveProductCategory(p));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Product[]>();
+    for (const p of rows) {
+      const label = resolveProductCategory(p);
+      const list = map.get(label) ?? [];
+      list.push(p);
+      map.set(label, list);
+    }
+    return Array.from(map.entries())
+      .map(([label, products]) => ({
+        label,
+        products: products.sort((a, b) => a.code.localeCompare(b.code)),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const next: Record<string, string> = {};
+      for (const g of groups) {
+        next[g.label] = prev[g.label] ?? g.label;
+      }
+      return next;
+    });
+    setExpanded((prev) => {
+      const next = { ...prev };
+      for (const g of groups) {
+        if (next[g.label] === undefined) next[g.label] = true;
+      }
+      return next;
+    });
+  }, [groups]);
+
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.products }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsCatalog }),
+    ]);
+  }
+
+  async function renameCategory(fromLabel: string) {
+    const toLabel = (drafts[fromLabel] ?? "").trim();
+    if (!toLabel) {
+      toast.error("Category name can’t be empty");
+      return;
+    }
+    if (toLabel === fromLabel) {
+      toast.message("No changes to save");
+      return;
+    }
+
+    const matching = rows.filter((p) => resolveProductCategory(p) === fromLabel);
+    if (matching.length === 0) {
+      toast.error("No products found for that category");
+      return;
+    }
+
+    setSavingLabel(fromLabel);
+    const { error } = await supabase
+      .from("products")
+      .update({ category: toLabel })
+      .in(
+        "id",
+        matching.map((p) => p.id),
+      );
+    setSavingLabel(null);
+
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Renamed “${fromLabel}” to “${toLabel}” (${matching.length} products)`);
+      await invalidate();
+    }
+  }
+
+  async function moveProduct(product: Product, nextCategory: string) {
+    const current = resolveProductCategory(product);
+    if (nextCategory === current) return;
+
+    let target = nextCategory;
+    if (nextCategory === "__new__") {
+      const typed = window.prompt("New category name", "");
+      if (typed === null) return;
+      target = typed.trim();
+      if (!target) {
+        toast.error("Category name can’t be empty");
+        return;
+      }
+    }
+
+    setMovingId(product.id);
+    const { error } = await supabase
+      .from("products")
+      .update({ category: target })
+      .eq("id", product.id);
+    setMovingId(null);
+
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Moved ${product.code} to “${target}”`);
+      await invalidate();
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Categories</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Rename group headings, and choose which products sit under each category on the order
+          form.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <TableSkeleton rows={5} />
+        ) : groups.length === 0 ? (
+          <div className="py-6 text-sm text-muted-foreground">No products yet — add products first.</div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {groups.map((g) => {
+              const dirty = (drafts[g.label] ?? g.label).trim() !== g.label;
+              const isOpen = expanded[g.label] !== false;
+              return (
+                <li key={g.label} className="py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+                    <button
+                      type="button"
+                      className="mt-2 shrink-0 text-muted-foreground"
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? "Collapse products" : "Expand products"}
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [g.label]: !isOpen }))
+                      }
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        value={drafts[g.label] ?? g.label}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({ ...prev, [g.label]: e.target.value }))
+                        }
+                        aria-label={`Rename category ${g.label}`}
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {g.products.length} product{g.products.length === 1 ? "" : "s"}
+                        {g.label === "Other" ? " · header hidden on catalog" : ""}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={!dirty || savingLabel !== null}
+                      onClick={() => void renameCategory(g.label)}
+                      className="w-full sm:w-auto"
+                    >
+                      {savingLabel === g.label ? "Saving…" : "Save name"}
+                    </Button>
+                  </div>
+
+                  {isOpen ? (
+                    <ul className="mt-3 space-y-2 border-l border-border/70 pl-4 sm:ml-6">
+                      {g.products.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex flex-col gap-2 rounded-md bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-mono text-xs text-muted-foreground">{p.code}</div>
+                            <div className="truncate text-sm">{p.description}</div>
+                          </div>
+                          <select
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm sm:w-[14rem]"
+                            value={resolveProductCategory(p)}
+                            disabled={movingId !== null}
+                            onChange={(e) => void moveProduct(p, e.target.value)}
+                            aria-label={`Category for ${p.code}`}
+                          >
+                            {categoryLabels.map((label) => (
+                              <option key={label} value={label}>
+                                {label}
+                              </option>
+                            ))}
+                            <option value="__new__">New category…</option>
+                          </select>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -502,5 +784,6 @@ const PRODUCT_IMPORT_CONFIG: BulkImportConfig = {
       required: true,
       aliases: ["name", "product", "product description"],
     },
+    { key: "category", label: "Category", aliases: ["group", "range", "product category"] },
   ],
 };

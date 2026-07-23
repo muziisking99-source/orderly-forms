@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { productGroupLabel } from "@/lib/brand";
+import { resolveProductCategory } from "@/lib/brand";
 import type { ProductCatalogRow } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ function rowsInImportOrder(products: ProductCatalogRow[]): TableRow[] {
   const rows: TableRow[] = [];
   let lastLabel: string | null = null;
   for (const p of products) {
-    const label = productGroupLabel(p.code);
+    const label = resolveProductCategory(p);
     if (label !== lastLabel) {
       if (label !== "Other") {
         rows.push({ type: "group", key: `h-${label}-${p.id}`, label });
