@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { PwaInstallButton } from "@/components/PwaInstall";
 import {
   Sheet,
   SheetContent,
@@ -66,6 +67,7 @@ export function AppNav() {
               Admin
             </Link>
           ) : null}
+          <PwaInstallButton className="ml-1" />
           <Button variant="ghost" size="sm" className="ml-1" onClick={() => void handleSignOut()}>
             <LogOut className="mr-1.5 h-4 w-4" />
             Sign out
@@ -106,6 +108,9 @@ export function AppNav() {
                   Admin
                 </Link>
               ) : null}
+              <div className="px-4 py-2">
+                <PwaInstallButton className="w-full" />
+              </div>
               <button
                 type="button"
                 className={`${mobileLinkClass} text-left`}

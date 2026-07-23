@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/lib/auth";
 import { AppNav } from "@/components/AppNav";
+import { useRegisterServiceWorker } from "@/components/PwaInstall";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -94,10 +95,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Order Requisition — Golden Fresh Biscuits" },
       { name: "twitter:description", content: "Create customer Order Requisitions and download branded PDF documents." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a36ea07c-0ece-458d-8241-c00db5eff4eb/id-preview-37ca543b--3a5275cf-4a94-4a71-926c-e2dadefdaf78.lovable.app-1784789962970.png" },
+      { name: "theme-color", content: "#0B1F3A" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Order Req" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a36ea07c-0ece-458d-8241-c00db5eff4eb/id-preview-37ca543b--3a5275cf-4a94-4a71-926c-e2dadefdaf78.lovable.app-1784789962970.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -128,6 +137,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useRegisterServiceWorker();
 
   return (
     <QueryClientProvider client={queryClient}>

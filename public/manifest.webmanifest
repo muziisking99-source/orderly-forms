@@ -1,0 +1,32 @@
+{
+  "name": "Order Requisition — Golden Fresh",
+  "short_name": "Order Req",
+  "description": "Create and share Golden Fresh Order Requisitions",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B1F3A",
+  "theme_color": "#0B1F3A",
+  "lang": "en-ZA",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
