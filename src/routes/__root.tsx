@@ -84,17 +84,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Create customer Order Requisitions and download branded PDF documents.",
       },
       { name: "author", content: "Golden Fresh Biscuits" },
-      { property: "og:title", content: "Order Requisition" },
+      { property: "og:title", content: "Order Requisition — Golden Fresh Biscuits" },
       {
         property: "og:description",
         content: "Create customer Order Requisitions and download branded PDF documents.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Order Requisition — Golden Fresh Biscuits" },
+      { name: "twitter:description", content: "Create customer Order Requisitions and download branded PDF documents." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a36ea07c-0ece-458d-8241-c00db5eff4eb/id-preview-37ca543b--3a5275cf-4a94-4a71-926c-e2dadefdaf78.lovable.app-1784789962970.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a36ea07c-0ece-458d-8241-c00db5eff4eb/id-preview-37ca543b--3a5275cf-4a94-4a71-926c-e2dadefdaf78.lovable.app-1784789962970.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
