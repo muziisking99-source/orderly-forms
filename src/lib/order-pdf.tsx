@@ -95,17 +95,11 @@ export async function downloadBlobAsFile(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Prefer stored PDF; regenerate from order data if missing. */
+/** Always regenerate from current data so layout updates apply. */
 export async function resolveOrderPdfBlob(
   order: OrderRow,
   items: OrderItemRow[],
 ): Promise<Blob> {
-  if (order.pdf_path) {
-    const { data, error } = await supabase.storage
-      .from(ORDER_PDF_BUCKET)
-      .download(order.pdf_path);
-    if (!error && data) return data;
-  }
   return generatePdfBlob(pdfDataFromOrder(order, items));
 }
 

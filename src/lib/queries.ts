@@ -37,6 +37,7 @@ export type OrderRow = {
   id: string;
   document_number: string;
   order_date: string;
+  customer_id: string;
   customer_name: string;
   account_code: string | null;
   delivery_address: string | null;
@@ -59,6 +60,7 @@ export type OrderListRow = {
 
 export type OrderItemRow = {
   id: string;
+  product_id: string | null;
   product_code: string;
   product_description: string;
   quantity: string;
@@ -113,7 +115,7 @@ export async function fetchOrder(id: string): Promise<OrderRow | null> {
 export async function fetchOrderItems(orderId: string): Promise<OrderItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
-    .select("id,product_code,product_description,quantity,price,position")
+    .select("id,product_id,product_code,product_description,quantity,price,position")
     .eq("order_id", orderId)
     .order("position");
   if (error) throw error;

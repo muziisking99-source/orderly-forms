@@ -22,7 +22,7 @@ function hasAnyPrice(items: SalesOrderViewModel["items"]) {
   return items.some((it) => (it.price ?? "").trim() !== "");
 }
 
-function padItems(items: SalesOrderViewModel["items"], min = 3) {
+function padItems(items: SalesOrderViewModel["items"], min = 0) {
   const rows = [...items];
   while (rows.length < min) {
     rows.push({ id: `blank-${rows.length}`, code: "", description: "", quantity: "", price: "" });
@@ -37,7 +37,7 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
 
   return (
     <article
-      className="sales-order-doc mx-auto w-full max-w-[210mm] overflow-hidden bg-white text-[var(--so-ink)] shadow-sm print:max-w-none print:shadow-none"
+      className="sales-order-doc mx-auto flex min-h-[297mm] w-full max-w-[210mm] flex-col overflow-hidden bg-white text-[var(--so-ink)] shadow-sm print:max-w-none print:shadow-none"
       style={
         {
           "--so-navy": BRAND.navy,
@@ -50,22 +50,24 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
         } as CSSProperties
       }
     >
-      <header className="bg-[var(--so-navy)] px-4 py-3 text-white sm:px-6 print:px-5 print:py-2.5">
-        <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+      <header className="border-b border-[var(--so-rule)] bg-white px-4 py-3 sm:px-6 print:px-5">
+        <div className="flex items-center justify-between gap-4">
           <img
             src="/golden-fresh-logo.png"
             alt="Golden Fresh"
-            className="mb-2 h-11 w-auto object-contain sm:h-12"
+            className="h-16 w-auto object-contain sm:h-20"
           />
-          <p className="text-[0.7rem] leading-snug text-white/90">{COMPANY.address}</p>
-          <p className="mt-0.5 text-[0.7rem] text-white/90">Tel: {COMPANY.tel}</p>
-          <p className="mt-0.5 text-[0.7rem] font-semibold text-white">{COMPANY.salesEmail}</p>
+          <div className="min-w-0 text-right text-[0.7rem] leading-snug text-[var(--so-muted)]">
+            <p>{COMPANY.address}</p>
+            <p className="mt-0.5">Tel: {COMPANY.tel}</p>
+            <p className="mt-0.5 font-semibold text-[var(--so-navy)]">{COMPANY.salesEmail}</p>
+          </div>
         </div>
       </header>
       <div className="h-[2.5px] bg-[var(--so-gold)]" />
       <div className="h-[1.25px] bg-[var(--so-red)]" />
 
-      <div className="px-4 py-3 sm:px-6 sm:py-4 print:px-5 print:py-3">
+      <div className="flex flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 print:px-5 print:py-3">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
           <div className="flex flex-col justify-center">
             <div className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-[var(--so-red)]">
@@ -158,34 +160,38 @@ export function SalesOrderDocument({ order }: { order: SalesOrderViewModel }) {
           </tbody>
         </table>
 
-        <div className="mt-3 overflow-hidden border border-[var(--so-ink)] font-body text-[0.55rem] uppercase leading-tight text-[var(--so-ink)]">
-          <div className="border-b border-[var(--so-ink)] py-1 text-center text-[0.6rem] font-bold tracking-[0.08em]">
-            Pallet Configuration
+        <div className="mt-auto pt-4">
+          <div className="overflow-hidden border border-[var(--so-ink)] font-body text-[0.55rem] uppercase leading-tight text-[var(--so-ink)]">
+            <div className="border-b border-[var(--so-ink)] py-1 text-center text-[0.6rem] font-bold tracking-[0.08em]">
+              Pallet Configuration
+            </div>
+            <table className="w-full table-fixed border-collapse">
+              <tbody>
+                {PALLET_CONFIGURATION.map((pair, i) => {
+                  const left = pair[0] ?? { product: "", qty: "" };
+                  const right = pair[1] ?? { product: "", qty: "" };
+                  return (
+                    <tr key={i} className="border-b border-[var(--so-ink)] last:border-b-0">
+                      <td className="w-[34%] border-r border-[var(--so-ink)] px-1 py-0.5">
+                        {left.product}
+                      </td>
+                      <td className="w-[16%] border-r border-[var(--so-ink)] px-1 py-0.5">
+                        {left.qty}
+                      </td>
+                      <td className="w-[34%] border-r border-[var(--so-ink)] px-1 py-0.5">
+                        {right.product}
+                      </td>
+                      <td className="w-[16%] px-1 py-0.5">{right.qty}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <table className="w-full table-fixed border-collapse">
-            <tbody>
-              {PALLET_CONFIGURATION.map((pair, i) => {
-                const left = pair[0] ?? { product: "", qty: "" };
-                const right = pair[1] ?? { product: "", qty: "" };
-                return (
-                  <tr key={i} className="border-b border-[var(--so-ink)] last:border-b-0">
-                    <td className="w-[34%] border-r border-[var(--so-ink)] px-1 py-0.5">
-                      {left.product}
-                    </td>
-                    <td className="w-[16%] border-r border-[var(--so-ink)] px-1 py-0.5">{left.qty}</td>
-                    <td className="w-[34%] border-r border-[var(--so-ink)] px-1 py-0.5">
-                      {right.product}
-                    </td>
-                    <td className="w-[16%] px-1 py-0.5">{right.qty}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
 
-        <div className="mt-4 border-t border-[var(--so-rule)] pt-1.5 text-[0.6rem] text-[var(--so-muted)]">
-          {COMPANY.brandName} · {COMPANY.legalName}
+          <div className="mt-3 border-t border-[var(--so-rule)] pt-1.5 text-[0.6rem] text-[var(--so-muted)]">
+            {COMPANY.brandName} · {COMPANY.legalName}
+          </div>
         </div>
       </div>
     </article>

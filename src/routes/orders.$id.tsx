@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Printer, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { requireSession, useAuth } from "@/lib/auth";
@@ -182,6 +182,11 @@ function SalesOrderPage() {
             <ArrowLeft className="h-4 w-4" /> History
           </Link>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="flex-1 sm:flex-none" asChild>
+              <Link to="/orders/$id/edit" params={{ id: order.id }}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit
+              </Link>
+            </Button>
             <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" /> Print
             </Button>

@@ -64,7 +64,7 @@ const STRIPE = "#F7F5F0";
 const s = StyleSheet.create({
   page: {
     paddingTop: 0,
-    paddingBottom: 32,
+    paddingBottom: 148,
     paddingHorizontal: 0,
     fontFamily: "NunitoPdf",
     fontSize: 9,
@@ -72,27 +72,35 @@ const s = StyleSheet.create({
     backgroundColor: PAPER,
   },
   headerBand: {
-    backgroundColor: NAVY,
-    paddingTop: 12,
-    paddingBottom: 10,
+    backgroundColor: PAPER,
+    paddingTop: 14,
+    paddingBottom: 12,
     paddingHorizontal: 28,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   logo: {
-    width: 64,
-    height: 46,
-    marginBottom: 6,
+    width: 110,
+    height: 80,
+  },
+  letterheadRight: {
+    flex: 1,
+    alignItems: "flex-end",
+    paddingLeft: 16,
   },
   letterheadLine: {
-    fontSize: 7.5,
-    color: "#E8ECF2",
-    lineHeight: 1.35,
+    fontSize: 8,
+    color: MUTED,
+    lineHeight: 1.4,
+    textAlign: "right",
   },
   letterheadEmail: {
-    fontSize: 7.5,
-    color: "#FFFFFF",
+    fontSize: 8,
+    color: NAVY,
     fontWeight: 700,
-    marginTop: 2,
+    marginTop: 3,
+    textAlign: "right",
   },
   goldStripe: {
     height: 2.5,
@@ -310,7 +318,7 @@ const s = StyleSheet.create({
   },
   pageFooter: {
     position: "absolute",
-    bottom: 14,
+    bottom: 12,
     left: 28,
     right: 28,
     flexDirection: "row",
@@ -329,8 +337,13 @@ const s = StyleSheet.create({
     color: MUTED,
     textAlign: "right",
   },
+  palletFixed: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: 34,
+  },
   palletWrap: {
-    marginTop: 10,
     borderWidth: 1,
     borderColor: INK,
   },
@@ -386,7 +399,7 @@ const s = StyleSheet.create({
   },
 });
 
-function padItems(items: SalesOrderPdfData["items"], min = 3) {
+function padItems(items: SalesOrderPdfData["items"], min = 0) {
   const rows = [...items];
   while (rows.length < min) {
     rows.push({ code: "", description: "", quantity: "", price: "" });
@@ -408,9 +421,11 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
       <Page size="A4" style={s.page}>
         <View style={s.headerBand}>
           <Image src={data.logoSrc ?? GOLDEN_FRESH_LOGO_DATA_URL} style={s.logo} />
-          <Text style={s.letterheadLine}>{COMPANY.address}</Text>
-          <Text style={s.letterheadLine}>Tel: {COMPANY.tel}</Text>
-          <Text style={s.letterheadEmail}>{COMPANY.salesEmail}</Text>
+          <View style={s.letterheadRight}>
+            <Text style={s.letterheadLine}>{COMPANY.address}</Text>
+            <Text style={s.letterheadLine}>Tel: {COMPANY.tel}</Text>
+            <Text style={s.letterheadEmail}>{COMPANY.salesEmail}</Text>
+          </View>
         </View>
         <View style={s.goldStripe} />
         <View style={s.redAccent} />
@@ -484,8 +499,10 @@ export function SalesOrderPdfDocument({ data }: { data: SalesOrderPdfData }) {
               );
             })}
           </View>
+        </View>
 
-          <View style={s.palletWrap} wrap={false}>
+        <View style={s.palletFixed} fixed>
+          <View style={s.palletWrap}>
             <View style={s.palletHeader}>
               <Text style={s.palletHeaderText}>Pallet Configuration</Text>
             </View>

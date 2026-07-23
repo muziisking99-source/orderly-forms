@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, Share2, Trash2 } from "lucide-react";
+import { Download, Eye, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { requireSession } from "@/lib/auth";
@@ -62,7 +62,7 @@ function OrdersHistoryPage() {
           History
         </h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Order Requisitions you have created. Open, download, share, or delete.
+          Order Requisitions you have created. Open, edit, download, share, or delete.
         </p>
       </div>
 
@@ -175,6 +175,12 @@ function HistoryRow({ order }: { order: OrderListRow }) {
           <Link to="/orders/$id" params={{ id: order.id }}>
             <Eye className="mr-1.5 h-4 w-4" />
             Open
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/orders/$id/edit" params={{ id: order.id }}>
+            <Pencil className="mr-1.5 h-4 w-4" />
+            Edit
           </Link>
         </Button>
         <Button
