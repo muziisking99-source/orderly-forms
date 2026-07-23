@@ -29,7 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BulkImportDialog, type BulkImportConfig } from "@/components/BulkImportDialog";
-import { ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: () => requireAdmin(),

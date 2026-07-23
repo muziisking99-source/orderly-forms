@@ -52,16 +52,16 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/orders/$id': typeof OrdersIdRoute
-  '/orders/edit/$id': typeof OrdersEditIdRoute
   '/orders/': typeof OrdersIndexRoute
+  '/orders/edit/$id': typeof OrdersEditIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/orders/$id': typeof OrdersIdRoute
-  '/orders/edit/$id': typeof OrdersEditIdRoute
   '/orders': typeof OrdersIndexRoute
+  '/orders/edit/$id': typeof OrdersEditIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,15 +69,23 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/orders/$id': typeof OrdersIdRoute
-  '/orders/edit/$id': typeof OrdersEditIdRoute
   '/orders/': typeof OrdersIndexRoute
+  '/orders/edit/$id': typeof OrdersEditIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/orders/$id' | '/orders/edit/$id' | '/orders/'
+  fullPaths:
+    '/' | '/admin' | '/login' | '/orders/$id' | '/orders/' | '/orders/edit/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/orders/$id' | '/orders/edit/$id' | '/orders'
-  id: '__root__' | '/' | '/admin' | '/login' | '/orders/$id' | '/orders/edit/$id' | '/orders/'
+  to: '/' | '/admin' | '/login' | '/orders/$id' | '/orders' | '/orders/edit/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/orders/$id'
+    | '/orders/'
+    | '/orders/edit/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -85,8 +93,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
   OrdersIdRoute: typeof OrdersIdRoute
-  OrdersEditIdRoute: typeof OrdersEditIdRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  OrdersEditIdRoute: typeof OrdersEditIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,9 +149,19 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
   OrdersIdRoute: OrdersIdRoute,
-  OrdersEditIdRoute: OrdersEditIdRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  OrdersEditIdRoute: OrdersEditIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
